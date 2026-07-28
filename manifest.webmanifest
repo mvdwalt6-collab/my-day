@@ -1,0 +1,10 @@
+{
+  "name": "My Day",
+  "short_name": "My Day",
+  "description": "A picture routine, chore and pocket-money board for kids.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#e7f3fb",
+  "theme_color": "#e7f3fb"
+}
