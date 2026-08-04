@@ -46,7 +46,6 @@ const PALETTE: Array<[string, string]> = [
   ["#e6b800", "#fff0bf"],
 ];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
 export class Core {

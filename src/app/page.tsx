@@ -18,8 +18,7 @@ export default async function HomePage() {
     .maybeSingle();
 
   if (!membership) redirect("/onboarding");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tenant = (membership as any).tenants;
+  const tenant = (membership as { tenants?: { status?: string; name?: string } }).tenants;
   if (tenant?.status === "suspended" || tenant?.status === "deleted") redirect("/suspended");
 
   return <HomeBoard tenantId={membership.tenant_id} familyName={tenant?.name ?? "My Day"} email={user.email ?? ""} />;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
@@ -9,18 +9,16 @@ export default function OnboardingPage() {
   const router = useRouter();
   const params = useSearchParams();
   const [familyName, setFamilyName] = useState(params.get("family") ?? "");
-  const [hasLocalData, setHasLocalData] = useState(false);
+  const [hasLocalData] = useState(() => {
+    try {
+      return !!localStorage.getItem("myday.v1");
+    } catch {
+      return false;
+    }
+  });
   const [importOnCreate, setImportOnCreate] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      setHasLocalData(!!localStorage.getItem("myday.v1"));
-    } catch {
-      /* localStorage disabled */
-    }
-  }, []);
 
   async function createFamily(e: React.FormEvent) {
     e.preventDefault();

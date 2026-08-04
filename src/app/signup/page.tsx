@@ -58,7 +58,7 @@ export default function SignupPage() {
     <div className="auth-shell">
       <form className="auth-card" onSubmit={signUp}>
         <h1>Create your family</h1>
-        <p>Your family gets its own private space. Only you can see your children's data.</p>
+        <p>Your family gets its own private space. Only you can see your children&apos;s data.</p>
 
         <label>
           Family name

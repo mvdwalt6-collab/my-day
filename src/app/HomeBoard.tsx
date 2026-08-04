@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Core } from "@/lib/core/adapter";
 import { createClient } from "@/lib/supabase/client";
@@ -110,7 +110,7 @@ function isTaskEditor(editor: TaskEditor, task: Task) {
 
 export default function HomeBoard({ tenantId, familyName, email }: Props) {
   const [supabase] = useState(() => createClient());
-  const coreRef = useRef<Core | null>(null);
+  const [core, setCore] = useState<Core | null>(null);
   const [version, setVersion] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
@@ -130,6 +130,14 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
   const [screenStart, setScreenStart] = useState("");
   const [screenEnd, setScreenEnd] = useState("");
   const [alarmLeadMin, setAlarmLeadMin] = useState("5");
+
+  function focusChild(child: Child | null) {
+    setSelectedChildId(child?.id ?? null);
+    if (!child) return;
+    setChildDraft({ name: child.name, av: child.av, color: child.color, colorLite: child.colorLite });
+    setTaskEditor(makeTaskEditor(child.id));
+    setGoalEditor(makeGoalEditor(child.id));
+  }
 
   useEffect(() => {
     let alive = true;
@@ -155,15 +163,9 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
           core.destroy();
           return;
         }
-        coreRef.current = core;
+        setCore(core);
         const state = core.getState();
-        setSelectedChildId(state.children[0]?.id ?? null);
-        const firstChild = state.children[0];
-        if (firstChild) {
-          setChildDraft({ name: firstChild.name, av: firstChild.av, color: firstChild.color, colorLite: firstChild.colorLite });
-          setTaskEditor(makeTaskEditor(firstChild.id));
-          setGoalEditor(makeGoalEditor(firstChild.id));
-        }
+        focusChild(state.children[0] ?? null);
         setScreenStart(state.settings.screenTimeStart);
         setScreenEnd(state.settings.screenTimeEnd);
         setAlarmLeadMin(String(state.settings.alarmLeadMin ?? 5));
@@ -182,32 +184,7 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
       core?.destroy();
     };
   }, [supabase, tenantId]);
-
-  const core = coreRef.current;
   const state = core?.getState();
-
-  useEffect(() => {
-    if (!state) return;
-    if (!selectedChildId || !state.children.some((child) => child.id === selectedChildId)) {
-      setSelectedChildId(state.children[0]?.id ?? null);
-    }
-  }, [state, selectedChildId, version]);
-
-  useEffect(() => {
-    if (!state) return;
-    const child = state.children.find((item) => item.id === selectedChildId) ?? state.children[0];
-    if (!child) return;
-    setChildDraft({ name: child.name, av: child.av, color: child.color, colorLite: child.colorLite });
-    setTaskEditor((draft) => (draft.id ? draft : { ...draft, childId: child.id }));
-    setGoalEditor((draft) => (draft.id ? draft : { ...draft, childId: child.id }));
-  }, [selectedChildId, state?.children, version]);
-
-  useEffect(() => {
-    if (!state) return;
-    setScreenStart(state.settings.screenTimeStart);
-    setScreenEnd(state.settings.screenTimeEnd);
-    setAlarmLeadMin(String(state.settings.alarmLeadMin ?? 5));
-  }, [state?.settings.screenTimeStart, state?.settings.screenTimeEnd, state?.settings.alarmLeadMin]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -280,7 +257,8 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
   async function addChild() {
     if (!core || !newChild.name.trim()) return;
     const id = await core.addChild(newChild);
-    setSelectedChildId(id);
+    const created = core.getState().children.find((child) => child.id === id) ?? null;
+    focusChild(created);
     setNewChild({ name: "", av: "🙂", color: COLOR_CHOICES[2][0], colorLite: COLOR_CHOICES[2][1] });
   }
 
@@ -373,7 +351,7 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
                 ["--chip" as string]: child.color,
                 ["--chip-soft" as string]: child.colorLite,
               } as React.CSSProperties}
-              onClick={() => setSelectedChildId(child.id)}
+              onClick={() => focusChild(child)}
             >
               <span className="child-chip__avatar">{child.av}</span>
               <span className="child-chip__name">{child.name}</span>
