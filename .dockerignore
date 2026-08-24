@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+.vercel
+.playwright-mcp
+.env*
+*.zip
+legacy

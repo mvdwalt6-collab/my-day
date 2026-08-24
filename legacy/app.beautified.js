@@ -1,0 +1,809 @@
+! function() {
+    "use strict";
+    var t = window.requestAnimationFrame ? window.requestAnimationFrame.bind(window) : function(t) {
+            setTimeout(t, 16)
+        },
+        a = {
+            get: function(t) {
+                try {
+                    return localStorage.getItem(t)
+                } catch (t) {
+                    return null
+                }
+            },
+            set: function(t, a) {
+                try {
+                    localStorage.setItem(t, a)
+                } catch (t) {}
+            }
+        };
+    try {
+        var n = localStorage.getItem("myday.v1"),
+            e = ["Jan", "Mia", "Sipho", "Lily"];
+        if (n && e.some(function(t) {
+                return n.indexOf('"name":"' + t + '"') >= 0
+            })) {
+            localStorage.removeItem("myday.v1");
+            localStorage.removeItem("myday.v1.pin");
+            localStorage.removeItem("myday.v1.lang")
+        }
+    } catch (t) {};
+    var e = {
+            af: {
+                money: "my geld",
+                save: "Spaar vir",
+                Morning: "Oggend",
+                Afternoon: "Middag",
+                Evening: "Aand",
+                Bonus: "Bonus",
+                now: "NOU",
+                left: "oor",
+                locked: "nog nie",
+                reward: "kry ekstra!",
+                all: "Alles klaar! ⭐",
+                undo: "Ongedaan maak",
+                coins: "munte",
+                next: "Volgende",
+                almost: "Amper tyd!",
+                timeword: "DIS TYD!",
+                inword: "oor",
+                atword: "om",
+                doneoff: "Klaar? Tik dit af!",
+                snooze: "Sluimer 5 min",
+                ringagain: "Lui weer",
+                dueword: "Moenie vergeet nie!"
+            },
+            en: {
+                money: "my money",
+                save: "Saving for",
+                Morning: "Morning",
+                Afternoon: "Afternoon",
+                Evening: "Evening",
+                Bonus: "Bonus",
+                now: "NOW",
+                left: "to go",
+                locked: "not yet",
+                reward: "earn extra!",
+                all: "All done! ⭐",
+                undo: "Undo",
+                coins: "coins",
+                next: "Next",
+                almost: "Almost time!",
+                timeword: "IT'S TIME!",
+                inword: "in",
+                atword: "at",
+                doneoff: "Done? Tap it off!",
+                snooze: "Snooze 5 min",
+                ringagain: "Ring again",
+                dueword: "Don't forget!"
+            }
+        },
+        n = {
+            Morning: "🌅",
+            Afternoon: "🏞️",
+            Evening: "🌙",
+            Bonus: "⭐"
+        },
+        s = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        i = ["☀️", "🥣", "👕", "🪥", "🪮", "🛏️", "🧹", "🧺", "🗑️", "🐕", "🌱", "🍽️", "🛁", "🌙", "📚", "🧸", "🎨", "🧩", "🎲", "🪀", "⚽", "🏀", "🏉", "🥊", "🏃", "🤸", "🚲", "🎣", "🤿", "🪁", "🐟", "🐠", "🐦", "🦜", "🐶", "🎯", "🚣", "🏊", "🏈", "🎾", "🎳", "🎮", "💻", "📺", "🔫", "✈️", "🚗", "🎧", "🎸", "🏆", "🔬", "🎬", "🍕", "📱", "🚀", "🔭", "🏕️", "🎢", "🍦", "🏂", "⛷️", "🏄", "⛹️", "🤺", "🤼", "🧘", "💪", "🤾", "🏌️", "🥅", "⛳", "🎪", "🎭", "🖼️", "🎤", "🎼", "🎹", "🥁", "🎷", "🎺", "🔔", "🔊", "📻", "📹", "📷", "📸", "🎥", "🎞️", "📽️", "🎦", "🍔", "🍟", "🌭", "🥪", "🌮", "🌯", "🥙", "🧆", "🍳", "🍲", "🥘", "🍱", "🍛", "🍜", "🍝", "🍠", "🍢", "🍣", "🍤", "🍙", "🍚", "🍘", "🍥", "🥠", "🍡", "🍧", "🍨", "🍰", "🎂", "🍮", "🍭", "🍬", "🍫", "🍿", "🍩", "🍪", "🌰", "🥜", "🍯", "🥛", "🍼", "☕", "🍵", "🍶", "🍾", "🍷", "🍸", "🍹", "🍺", "🍻", "🥂", "🥃", "🥤", "🧃", "🧉", "🧊", "🎁", "🎀", "🎊", "🎉", "🎈", "💎", "👑", "🏅", "🥇", "🥈", "🥉", "🚗", "🚜", "🐰", "🐕", "🧹"],
+        d = 0,
+        o = 0,
+        l = "today",
+        c = null,
+        r = null,
+        u = 0;
+
+    function v() {
+        return window.__now ? new Date(window.__now) : new Date(Date.now() + u)
+    }
+
+    function g() {
+        return Core.getState().kidLang
+    }
+
+    function p(t) {
+        return e[g()][t] || t
+    }
+
+    function f() {
+        return Core.getState().children
+    }
+
+    function m() {
+        return f()[d]
+    }
+
+    function b(t) {
+        return "af" === g() ? t.af : t.en
+    }
+
+    function h() {
+        var t = Core.nowHour(v());
+        return t >= 5 && t < 12 ? "Morning" : t < 17 ? "Afternoon" : "Evening"
+    }
+    var y = null;
+
+    function w() {
+        document.getElementById("kids").innerHTML = f().map(function(t, a) {
+            return '<button class="kidchip' + (a === d ? " on" : "") + '" data-hold="' + a + '" style="--kc:' + t.color + ";--kcb:" + t.colorLite + '"><span class="kav">' + t.av + '</span><span class="kn">' + t.name + '</span><span class="holdbar"></span></button>'
+        }).join(""), document.querySelectorAll("[data-hold]").forEach(function(t) {
+            var a = parseInt(t.getAttribute("data-hold"), 10),
+                e = null;
+
+            function n(n) {
+                a !== d && (n.cancelable && n.preventDefault(), t.classList.add("holding"), e = setTimeout(function() {
+                    t.classList.remove("holding"), d = a, y = null, L()
+                }, Core.getState().settings.holdMs || 650))
+            }
+
+            function s() {
+                e && (clearTimeout(e), e = null), t.classList.remove("holding")
+            }
+            t.addEventListener("pointerdown", n), t.addEventListener("pointerup", s), t.addEventListener("pointerleave", s), t.addEventListener("pointercancel", s)
+        })
+    }
+
+    function k() {
+        var a = m(),
+            e = Core.kidBalance(a.id),
+            n = Core.goalsFor(a.id, "active"),
+            s = '<div class="lbl">' + p("save") + "</div>";
+        n.length || (s += '<div class="goal"><div class="gmid"><div class="gname" style="color:var(--ink-soft)">—</div></div></div>'), n.forEach(function(t) {
+            var r = t.price > 0 ? Math.min(100, Math.round(e / t.price * 100)) : 0,
+                i = e >= t.price,
+                o = Core.isGoalRedeemedToday(a.id, t.id, v());
+            s += '<div class="goal' + (i ? " reached" : "") + (o && !t.repeatableDaily ? " redeemed" : "") + '" data-redeem="' + t.id + '"><div class="gpic">' + t.icon + '</div><div class="gmid"><div class="gname">' + t.name + '</div><div class="gprice">R' + e + " / R" + t.price + '</div><div class="bar"><div class="fill" data-pct="' + r + '">' + (i && (!o || t.repeatableDaily) ? "✓" : o && !t.repeatableDaily ? "✓✓" : "") + "</div></div></div></div>"
+        }), document.getElementById("goalsBar").innerHTML = s, t(function() {
+            document.querySelectorAll("#goalsBar .fill").forEach(function(t) {
+                t.style.width = t.getAttribute("data-pct") + "%"
+            })
+        })
+    }
+
+    function A() {
+        var t = m();
+        document.getElementById("bal").textContent = "R" + Core.kidBalance(t.id), document.getElementById("balLbl").textContent = p("money"), document.getElementById("nowWord").textContent = p(h());
+        var a = Core.earnedToday(t.id, v()),
+            e = Core.possibleToday(t.id, v()) || 1,
+            n = Math.max(0, Math.min(1, a / e));
+        document.getElementById("piggyCoins").style.transform = "translateY(" + 128 * (1 - n) + "px)"
+    }
+
+    function x() {
+        var a = m();
+        y || ((y = {
+            Morning: !1,
+            Afternoon: !1,
+            Evening: !1,
+            Bonus: !1
+        })[h()] = !0);
+        var e = Core.tasksForChildToday(a.id, v()),
+            s = h(),
+            i = "";
+        ["Morning", "Afternoon", "Evening", "Bonus"].forEach(function(t) {
+            var a = e.filter(function(a) {
+                return a.task.win === t
+            });
+            if ("Bonus" !== t || a.length) {
+                var d, o = t === s && "Bonus" !== t,
+                    l = !!y[t],
+                    c = a.filter(function(t) {
+                        return "available" === t.state
+                    }).length,
+                    r = a.length > 0 && a.every(function(t) {
+                        return "done" === t.state
+                    });
+                d = "Bonus" === t ? '<span class="nowb" style="background:#e0a92a">' + p("reward") + "</span>" : o ? '<span class="nowb">' + p("now") + "</span>" : r ? "⭐" : a.every(function(t) {
+                    return "locked" === t.state
+                }) ? "🔒 " + p("locked") : c + " " + p("left");
+                var u = a.map(C).join("");
+                r && "Bonus" !== t && !o && (u += '<div class="alldone">' + p("all") + "</div>"), i += '<section class="win ' + (o ? "now " : "") + (l ? "open" : "") + '" data-w="' + t + '"><button class="whead" data-toggle="' + t + '"><span class="wi">' + n[t] + '</span><span class="wt">' + p(t) + '</span><span class="meta">' + d + '<span class="chev">▶</span></span></button><div class="cbody"><div class="cards">' + u + "</div></div></section>"
+            }
+        }), document.getElementById("day").innerHTML = i, t(E)
+    }
+
+    function C(t) {
+        var a = t.task,
+            e = t.state,
+            n = "available" === e,
+            s = "card" + ("done" === e ? " done" : "") + ("locked" === e ? " locked" : "") + ("missed" === e ? " missed" : "") + (n ? " tappable" : "") + (a.win === h() && "available" === e ? " now-task" : ""),
+            i = '<div class="coin"><span class="ci">🪙</span>' + a.amount + "</div>",
+            d = "done" === e ? '<div class="tick">✓</div>' : "locked" === e ? '<div class="lock">🔒</div>' : "missed" === e ? '<div class="missedtag">' + ("af" === g() ? "gemis" : "missed") + "</div>" : "",
+            o = "";
+        a.penalty && (o += '<span class="chip penalty">−🪙</span>'), a.mute && a.alarm && (o += '<span class="chip mute">🔕</span>');
+        var l = b(a),
+            c = l.charAt(0);
+        return '<div class="' + s + '" ' + (n ? 'data-do="' + a.id + '"' : "") + ">" + d + '<div class="pic">' + a.icon + '</div><div class="txt"><div class="word">' + l + '</div><div class="sub">' + c + "</div></div>" + i + o + "</div>"
+    }
+
+    function E() {
+        var t = document.getElementById("day"),
+            a = document.getElementById("scrollHint");
+        if (t && a) {
+            var e = t.scrollHeight - t.clientHeight - t.scrollTop < 8;
+            a.classList.toggle("show", t.scrollHeight > t.clientHeight + 6 && !e)
+        }
+    }
+
+    function L() {
+        document.getElementById("lang").innerHTML = '<button class="' + ("af" === g() ? "on" : "") + '" data-lang="af">AF</button><button class="' + ("en" === g() ? "on" : "") + '" data-lang="en">EN</button>', w(), k(), A(), x(), N()
+    }
+    document.getElementById("day").addEventListener("scroll", E);
+    var I = !1,
+        T = null,
+        B = 0,
+        S = 0;
+
+    function M(t) {
+        try {
+            navigator.vibrate && navigator.vibrate(t)
+        } catch (t) {}
+    }
+
+    function R(t) {
+        var a = t % 60;
+        return Math.floor(t / 60) + ":" + (a < 10 ? "0" : "") + a
+    }
+
+    function N() {
+        var t = document.getElementById("alarmSlot");
+        if (t) {
+            var a = Core.nextAlarm(m().id, v());
+            if (!a) return t.innerHTML = "", void(T = null);
+            a.task.id !== T && (I = !1, T = a.task.id, S = 0), "ring" === a.phase && Date.now() - B >= 3500 && (B = Date.now(), H(), M([180, 90, 180])), t.innerHTML = function(t) {
+                var a = b(t.task),
+                    e = t.task.icon,
+                    n = t.task.time,
+                    s = "idle" === t.phase || "soon" === t.phase && I;
+                if ("ring" !== t.phase && "due" !== t.phase || (s = !1), s) {
+                    var i = "idle" === t.phase ? p("atword") + " " + n : p("inword") + " " + R(t.secsToGo);
+                    return '<div class="alarm slim" data-alarmtoggle="1"><span class="ac-ic">' + e + '</span><span class="ac-txt">' + p("next") + ": <b>" + a + '</b></span><span class="ac-count">' + i + '</span><span class="ac-chev">' + ("soon" === t.phase ? "▾" : "▸") + "</span></div>"
+                }
+                if ("soon" === t.phase) return '<div class="alarm soon"><svg class="clockguy" viewBox="0 0 100 100"><g class="bells"><circle cx="30" cy="16" r="9" fill="#ffd24d" stroke="#e0982a" stroke-width="2"/><circle cx="70" cy="16" r="9" fill="#ffd24d" stroke="#e0982a" stroke-width="2"/><rect x="46" y="7" width="8" height="10" rx="3" fill="#e0982a"/></g><circle cx="50" cy="56" r="34" fill="#fff3d6" stroke="#e0982a" stroke-width="4"/><circle cx="50" cy="56" r="28" fill="#fff"/><g class="eyes"><circle cx="41" cy="50" r="5.5" fill="#fff" stroke="#2b2740" stroke-width="1.5"/><circle cx="59" cy="50" r="5.5" fill="#fff" stroke="#2b2740" stroke-width="1.5"/><circle cx="41" cy="51" r="2.3" fill="#2b2740"/><circle cx="59" cy="51" r="2.3" fill="#2b2740"/></g><path d="M43 66 q7 6 14 0" fill="none" stroke="#2b2740" stroke-width="2" stroke-linecap="round"/><line x1="50" y1="56" x2="50" y2="42" stroke="#2b2740" stroke-width="2.6" stroke-linecap="round"/><line x1="50" y1="56" x2="61" y2="56" stroke="#e0574d" stroke-width="2.6" stroke-linecap="round"/><circle cx="50" cy="56" r="2.4" fill="#2b2740"/><g class="feet"><ellipse cx="37" cy="92" rx="7" ry="4" fill="#e0982a"/><ellipse cx="63" cy="92" rx="7" ry="4" fill="#e0982a"/></g></svg><div class="ac-body"><div class="ac-kicker">⏰ ' + p("almost") + '</div><div class="ac-event"><span class="ac-pic">' + e + '</span><span class="ac-name">' + a + '</span></div></div><div class="ac-count big">' + p("inword") + " <b>" + R(t.secsToGo) + '</b></div><button class="ac-collapse" data-alarmtoggle="1">▴</button></div>';
+                var d = "ring" === t.phase || Date.now() < S;
+                return '<div class="alarm ' + (d ? "ring" : "due") + '"><svg class="clockguy" viewBox="0 0 100 100"><g class="bells"><circle cx="30" cy="16" r="9" fill="#ffd24d" stroke="#e0982a" stroke-width="2"/><circle cx="70" cy="16" r="9" fill="#ffd24d" stroke="#e0982a" stroke-width="2"/><rect x="46" y="7" width="8" height="10" rx="3" fill="#e0982a"/></g><circle cx="50" cy="56" r="34" fill="#fff3d6" stroke="#e0982a" stroke-width="4"/><circle cx="50" cy="56" r="28" fill="#fff"/><g class="eyes"><circle cx="41" cy="50" r="5.5" fill="#fff" stroke="#2b2740" stroke-width="1.5"/><circle cx="59" cy="50" r="5.5" fill="#fff" stroke="#2b2740" stroke-width="1.5"/><circle cx="41" cy="51" r="2.3" fill="#2b2740"/><circle cx="59" cy="51" r="2.3" fill="#2b2740"/></g><path d="M43 66 q7 6 14 0" fill="none" stroke="#2b2740" stroke-width="2" stroke-linecap="round"/><line x1="50" y1="56" x2="50" y2="42" stroke="#2b2740" stroke-width="2.6" stroke-linecap="round"/><line x1="50" y1="56" x2="61" y2="56" stroke="#e0574d" stroke-width="2.6" stroke-linecap="round"/><circle cx="50" cy="56" r="2.4" fill="#2b2740"/><g class="feet"><ellipse cx="37" cy="92" rx="7" ry="4" fill="#e0982a"/><ellipse cx="63" cy="92" rx="7" ry="4" fill="#e0982a"/></g></svg><div class="ac-body"><div class="ac-kicker' + (d ? " big" : "") + '">' + (d ? "🔔 " + p("timeword") : "⏰ " + p("dueword")) + '</div><div class="ac-event"><span class="ac-pic">' + e + '</span><span class="ac-name">' + a + '</span></div><div class="ac-sub" style="font-size:12.5px;color:var(--gold-deep);font-weight:800;margin-top:3px">' + p("doneoff") + '</div><div class="ac-btns"><button class="ac-b snz" data-snooze="' + t.task.id + '">😴 ' + p("snooze") + '</button><button class="ac-b rng" data-ringnow="1">🔔 ' + p("ringagain") + "</button></div></div></div>"
+            }(a)
+        }
+    }
+
+    function H() {
+        if (P && j) try {
+            for (var t = j.currentTime, a = 0; a < 6; a++) {
+                var e = j.createOscillator(),
+                    n = j.createGain();
+                e.connect(n), n.connect(j.destination), e.type = "triangle", e.frequency.value = a % 2 ? 988 : 784;
+                var s = t + .18 * a;
+                n.gain.setValueAtTime(.001, s), n.gain.exponentialRampToValueAtTime(.28, s + .02), n.gain.exponentialRampToValueAtTime(.001, s + .16), e.start(s), e.stop(s + .17)
+            }
+        } catch (t) {}
+    }
+
+    function D(a, e) {
+        var n, s = m(),
+            i = Core.complete(s.id, a, v());
+        i.ok && (c = Core.getState().completions.slice(-1)[0], e && function(a, e) {
+            try {
+                for (var n = document.querySelector(".piggy").getBoundingClientRect(), s = a.getBoundingClientRect(), i = Math.max(3, Math.min(6, e)), d = n.left + .48 * n.width, o = n.top + .22 * n.height, l = 0; l < i; l++)(function(a) {
+                    var e = document.createElement("div");
+                    e.className = "flyco", e.textContent = "🪙", e.style.left = s.left + 24 + "px", e.style.top = s.top + 20 + "px", document.body.appendChild(e), t(function() {
+                        setTimeout(function() {
+                            e.style.transform = "translate(" + (d - s.left - 24) + "px," + (o - s.top - 20) + "px) scale(.55)", e.style.opacity = "0"
+                        }, 120 * a)
+                    }), setTimeout(function() {
+                        e.remove()
+                    }, 1300 + 120 * a)
+                })(l)
+            } catch (t) {}
+        }(e, i.coins), k(), A(), x(), N(), (n = document.getElementById("undo")).innerHTML = '<span>+🪙</span><button data-act="undo">' + p("undo") + "</button>", n.classList.add("show"), clearTimeout(r), r = setTimeout(function() {
+            n.classList.remove("show"), c = null
+        }, 4500), function() {
+            if (!P || !j) return;
+            try {
+                var t = j.createOscillator(),
+                    a = j.createGain();
+                t.connect(a), a.connect(j.destination), t.frequency.value = 880, a.gain.setValueAtTime(.001, j.currentTime), a.gain.exponentialRampToValueAtTime(.2, j.currentTime + .01), a.gain.exponentialRampToValueAtTime(.001, j.currentTime + .25), t.start(), t.stop(j.currentTime + .26)
+            } catch (t) {}
+        }())
+    }
+    var _, j = null,
+        P = !1;
+
+    function O() {
+        try {
+            j = new(window.AudioContext || window.webkitAudioContext), P = !0;
+            var t = document.getElementById("sp");
+            t && t.remove()
+        } catch (t) {}
+    }
+
+    function W() {
+        var t = v(),
+            a = t.getHours() % 12,
+            e = t.getMinutes(),
+            n = t.getSeconds(),
+            s = t.getHours();
+        document.getElementById("hh").setAttribute("transform", "rotate(" + 30 * (a + e / 60) + " 60 60)"), document.getElementById("mh").setAttribute("transform", "rotate(" + 6 * e + " 60 60)"), document.getElementById("sh").setAttribute("transform", "rotate(" + 6 * n + " 60 60)");
+        var h = (s + 11) % 12 + 1;
+        document.getElementById("nowTime").textContent = h + ":" + (e < 10 ? "0" : "") + e;
+        var c = Core.getState().settings,
+            i = c.screenTimeStart || "18:00",
+            l = c.screenTimeEnd || "19:00",
+            r = i.split(":"),
+            m = l.split(":"),
+            d = parseInt(r[0]),
+            g = parseInt(r[1]),
+            S = parseInt(m[0]),
+            u = parseInt(m[1]),
+            y = d * 60 + g,
+            b = S * 60 + u,
+            x = s * 60 + e;
+        if (document.getElementById("sunMoonIcon")) {
+            var E = s >= 6 && s < 18 ? "☀️" : "🌙";
+            document.getElementById("sunMoonIcon").textContent = E
+        }
+        var k = document.getElementById("screenTimeArc");
+        if (k) {
+            var T = (y * 360 / 1440) % 360,
+                C = (b * 360 / 1440) % 360;
+            if (T < C) {
+                var p = T * Math.PI / 180,
+                    D = C * Math.PI / 180,
+                    w = 60 + 50 * Math.cos(p - Math.PI / 2),
+                    I = 60 + 50 * Math.sin(p - Math.PI / 2),
+                    M = 60 + 50 * Math.cos(D - Math.PI / 2),
+                    A = 60 + 50 * Math.sin(D - Math.PI / 2),
+                    O = "M " + w + " " + I + " A 50 50 0 " + (D - p > Math.PI ? 1 : 0) + " 1 " + M + " " + A;
+                k.setAttribute("d", O), x >= y && x < b ? k.style.display = "" : k.style.display = "none"
+            } else {
+                k.style.display = "none"
+            }
+        }
+        N()
+    }
+
+    function z() {
+        return f()[o]
+    }
+
+    function q() {
+        var t, a;
+        document.getElementById("aTitle").textContent = {
+            today: "Today",
+            schedule: "Schedule",
+            rewards: "Rewards",
+            kids: "Children",
+            settings: "Settings"
+        } [l], t = "today" === l || "schedule" === l || "rewards" === l, (a = document.getElementById("aksel")).style.display = t ? "flex" : "none", a.innerHTML = f().map(function(t, a) {
+            return '<button class="aks' + (a === o ? " on" : "") + '" style="--kc:' + t.color + ";--kcb:" + t.colorLite + '" data-akid="' + a + '"><span class="a">' + t.av + '</span><span class="n">' + t.name + "</span></button>"
+        }).join(""), document.getElementById("atabs").innerHTML = [
+            ["today", "🏠", "Today"],
+            ["schedule", "🗓️", "Schedule"],
+            ["rewards", "🐷", "Rewards"],
+            ["kids", "👦", "Kids"],
+            ["settings", "⚙️", "Settings"]
+        ].map(function(t) {
+            return '<button class="' + (l === t[0] ? "on" : "") + '" data-tab="' + t[0] + '"><span class="ti">' + t[1] + "</span>" + t[2] + "</button>"
+        }).join("");
+        var e, n = document.getElementById("abody");
+        "today" === l ? n.innerHTML = function() {
+            var t = z(),
+                a = Core.weeklySummary(t.id, v()),
+                e = '<div class="abal"><span class="pg">🐷</span><div><b>R' + Core.balance(t.id) + "</b><span>" + t.name + "'s wallet</span></div></div>";
+            e += '<div class="sect">This week</div><div class="kpis"><div class="kpi"><b>' + a.done + "/" + a.scheduled + '</b><span>tasks done</span></div><div class="kpi"><b>R' + a.earned + '</b><span>earned</span></div><div class="kpi"><b>' + a.missed + "</b><span>missed</span></div></div>";
+            var n = Core.pendingToday(t.id, v());
+            e += '<div class="sect">Earned today — auto-approved</div><div class="note" style="margin:-2px 4px 8px">Coins are credited the moment a task is tapped. Dispute to reverse — open until the day ends (04:00), then locked in.</div><div class="acard">', n.length || (e += '<div class="arow"><div class="g"><div class="s">Nothing completed yet today.</div></div></div>');
+            return n.forEach(function(t) {
+                t.task && (e += '<div class="arow"><div class="ic">' + t.task.icon + '</div><div class="g"><div class="t">' + t.task.en + '</div><div class="s"><span class="tag">✓ done</span><span class="tag gold">+R' + t.completion.amount + "</span>" + (t.completion.manual ? '<span class="tag">given</span>' : "") + '</div></div><button class="btn bad" style="padding:8px 12px" data-dispute="' + t.completion.id + '">Dispute</button></div>')
+            }), e += "</div>"
+        }() : "schedule" === l ? n.innerHTML = function() {
+            var t = z(),
+                a = '<div class="btnrow" style="margin-top:6px"><button class="btn ghost" data-act="copyday">Copy a day…</button><button class="btn ghost" data-act="cloneweek">Clone week to…</button></div>';
+            ["Morning", "Afternoon", "Evening"].forEach(function(e) {
+                var n = Core.getState().tasks.filter(function(a) {
+                    return a.childId === t.id && a.win === e
+                });
+                a += '<div class="sect">' + e + '</div><div class="acard">', n.length || (a += '<div class="arow"><div class="g"><div class="s">No tasks</div></div></div>'), n.forEach(function(t) {
+                    a += F(t)
+                }), a += "</div>"
+            }), a += '<button class="addbtn" data-newtask="1">＋ Add task</button>';
+            var e = Core.getState().tasks.filter(function(a) {
+                return a.childId === t.id && "Bonus" === a.win
+            });
+            a += '<div class="sect">Bonus (extra)</div><div class="acard">', e.forEach(function(t) {
+                a += F(t)
+            }), e.length || (a += '<div class="arow"><div class="g"><div class="s">No bonus tasks</div></div></div>');
+            return a += "</div>"
+        }() : "rewards" === l ? n.innerHTML = function() {
+            var t = z(),
+                a = '<div class="abal"><span class="pg">🐷</span><div><b>R' + Core.balance(t.id) + "</b><span>" + t.name + "'s wallet</span></div></div>";
+            a += '<div class="btnrow" style="margin-top:10px"><button class="btn ghost" data-money="spend">Log spend</button><button class="btn ghost" data-money="advance">Advance</button><button class="btn ghost" data-money="adjust">Adjust</button></div>', a += '<div class="sect">Active goals</div><div class="acard">', Core.goalsFor(t.id, "active").forEach(function(e) {
+                var n = Core.balance(t.id) >= e.price;
+                a += '<div class="arow" data-goal="' + e.id + '"><div class="ic">' + e.icon + '</div><div class="g"><div class="t">' + e.name + (n ? " 🎉" : "") + '</div><div class="s"><span class="tag' + (n ? " gold" : "") + '">R' + Core.balance(t.id) + " / R" + e.price + '</span></div></div><span class="chev">›</span></div>'
+            }), a += '</div><button class="addbtn" data-newgoal="1">＋ Add goal</button>';
+            var e = Core.goalsFor(t.id, "wishlist");
+            e.length && (a += '<div class="sect">Wishlist</div><div class="acard">', e.forEach(function(t) {
+                a += '<div class="arow"><div class="ic">' + t.icon + '</div><div class="g"><div class="t">' + t.name + '</div><div class="s"><span class="tag">R' + t.price + '</span></div></div><button class="btn ok" style="padding:8px 12px" data-activate="' + t.id + '">Activate</button></div>'
+            }), a += "</div>");
+            a += '<div class="sect">Money history</div><div class="acard">';
+            var n = Core.getState().ledger.filter(function(a) {
+                return a.childId === t.id
+            }).slice(-12).reverse();
+            n.length || (a += '<div class="arow"><div class="g"><div class="s">No transactions yet.</div></div></div>');
+            return n.forEach(function(t) {
+                var e = t.amount < 0;
+                a += '<div class="arow"><div class="g"><div class="t" style="font-size:15px;text-transform:capitalize">' + t.type + (t.note ? " — " + t.note : "") + '</div></div><div class="amt' + (e ? " neg" : "") + '">' + (e ? "−" : "+") + "R" + Math.abs(t.amount) + "</div></div>"
+            }), a += "</div>"
+        }() : "kids" === l ? n.innerHTML = (e = '<div class="acard">', f().forEach(function(t) {
+            e += '<div class="arow" data-child="' + t.id + '"><div class="ic" style="background:' + t.colorLite + '">' + t.av + '</div><div class="g"><div class="t">' + t.name + '</div><div class="s"><span class="tag" style="background:' + t.colorLite + ";color:" + t.color + '">colour</span><span class="tag gold">R' + t.balance + '</span></div></div><span class="chev">›</span></div>'
+        }), e += '</div><button class="addbtn" data-newchild="1">＋ Add child</button>', e += '<div class="note">Up to 4 children show on the wall.</div>') : "settings" === l && (n.innerHTML = function() {
+            var t = Core.getState(),
+                a = '<div class="sect">Kid display language</div><div class="seg"><button class="' + ("af" === t.kidLang ? "on" : "") + '" data-set-lang="af">Afrikaans</button><button class="' + ("en" === t.kidLang ? "on" : "") + '" data-set-lang="en">English</button></div>';
+            return a += '<div class="sect">The day</div><div class="acard"><div class="arow"><div class="g"><div class="t">Day starts</div></div><span class="tag">04:00</span></div><div class="arow"><div class="g"><div class="t">Morning</div></div><span class="tag">05:00–12:00</span></div><div class="arow"><div class="g"><div class="t">Afternoon</div></div><span class="tag">12:00–17:00</span></div><div class="arow"><div class="g"><div class="t">Evening</div></div><span class="tag">17:00–20:30</span></div></div>', a += '<div class="sect">Alarm heads-up</div><div class="seg">' + [2, 5, 10, 15].map(function(a) {
+                return '<button class="' + ((t.settings.alarmLeadMin || 5) === a ? "on" : "") + '" data-lead="' + a + '">' + a + " min</button>"
+            }).join("") + '</div><div class="note">How long before a timed alarm task the countdown clock pops up on the kids’ screen. Give any task an exact time + alarm to make it a countdown event.</div>', a += '<div class="sect">Screen Time</div><div class="acard"><div class="arow"><div class="g"><div class="t">Screen time start</div><div class="s">When child can have screen time</div></div><input class="tf" style="width:80px" data-field="screenTimeStart" value="' + (t.settings.screenTimeStart || "18:00") + '" placeholder="HH:MM"></div><div class="arow"><div class="g"><div class="t">Screen time end</div><div class="s">When screen time stops</div></div><input class="tf" style="width:80px" data-field="screenTimeEnd" value="' + (t.settings.screenTimeEnd || "19:00") + '" placeholder="HH:MM"></div></div>', a += '<div class="sect">Weekly summary</div><div class="acard"><div class="arow"><div class="g"><div class="t">Email me a summary</div><div class="s">Every Sunday evening</div></div><div class="sw' + (t.settings.weeklySummary ? " on" : "") + '" data-act="toggle-summary"></div></div></div>', a += '<div class="sect">Security</div><div class="acard"><div class="arow" data-act="change-pin"><div class="g"><div class="t">Change parent PIN</div><div class="s">4-digit code to open this screen</div></div><span class="chev">›</span></div></div>', a += '<div class="sect">Danger</div><div class="acard"><div class="arow" data-act="reset"><div class="g"><div class="t" style="color:var(--bad)">Reset all data</div></div><span class="chev">›</span></div></div>', a
+        }()), n.scrollTop = 0
+    }
+
+    function F(t) {
+        var a = '<span class="tag gold">R' + t.amount + "</span>";
+        return t.time && (a += '<span class="tag">🕓 ' + t.time + "</span>"), a += t.alarm ? t.mute ? '<span class="tag mute">🔕</span>' : '<span class="tag">🔔</span>' : "", "later" === t.carry && (a += '<span class="tag">⏰</span>'), "next" === t.carry && (a += '<span class="tag">↪</span>'), t.penalty && (a += '<span class="tag red">−R' + t.penalty + "</span>"), t.active || (a += '<span class="tag">off</span>'), '<div class="arow" data-edit="' + t.id + '"><div class="ic">' + t.icon + '</div><div class="g"><div class="t">' + t.en + '</div><div class="s">' + a + '</div></div><span class="chev">›</span></div>'
+    }
+
+    function G(t, a) {
+        document.getElementById("sheetHead").innerHTML = "<b>" + t + '</b><button class="x" data-act="close-sheet">✕</button>', document.getElementById("sheetBody").innerHTML = a, document.getElementById("sheetw").classList.add("show")
+    }
+
+    function V() {
+        document.getElementById("sheetw").classList.remove("show")
+    }(_ = document.createElement("div")).className = "soundprompt", _.id = "sp", _.textContent = "🔊 Tap once to turn on sounds", _.setAttribute("data-act", "enable-sound"), document.body.appendChild(_),
+        function() {
+            for (var t = document.getElementById("ticks"), a = document.getElementById("nums"), e = 0; e < 12; e++) {
+                var n = 30 * e * Math.PI / 180,
+                    s = 60 + 46 * Math.sin(n),
+                    i = 60 - 46 * Math.cos(n),
+                    d = 60 + 52 * Math.sin(n),
+                    o = 60 - 52 * Math.cos(n);
+                t.innerHTML += '<line x1="' + s + '" y1="' + i + '" x2="' + d + '" y2="' + o + '" stroke="#d7d3e8" stroke-width="' + (e % 3 == 0 ? 3 : 2) + '"/>'
+            } [12, 3, 6, 9].forEach(function(t, e) {
+                var n = 30 * [0, 3, 6, 9][e] * Math.PI / 180,
+                    s = 60 + 38 * Math.sin(n),
+                    i = 60 - 38 * Math.cos(n) + 4;
+                a.innerHTML += '<text x="' + s + '" y="' + i + '">' + t + "</text>"
+            })
+        }();
+    var J = null;
+
+    function K(t) {
+        var a = J = t ? JSON.parse(JSON.stringify(t)) : {
+                icon: "🙂",
+                en: "",
+                af: "",
+                win: "Morning",
+                time: "",
+                amount: 1,
+                alarm: !0,
+                mute: !1,
+                penalty: 0,
+                carry: "none",
+                days: [0, 1, 2, 3, 4, 5, 6],
+                active: !0,
+                _new: !0
+            },
+            e = '<label class="f">Picture</label><div class="picgrid" data-grid="icon">' + i.map(function(t) {
+                return '<button class="' + (t === a.icon ? "on" : "") + '" data-pick="' + t + '">' + t + "</button>"
+            }).join("") + "</div>";
+        e += '<label class="f">Word — English</label><input class="tf" data-field="en" value="' + et(a.en) + '">', e += '<label class="f">Word — Afrikaans</label><input class="tf" data-field="af" value="' + et(a.af) + '">', e += '<label class="f">Part of day</label><div class="seg" data-seg="win">' + ["Morning", "Afternoon", "Evening", "Bonus"].map(function(t) {
+            return '<button class="' + (t === a.win ? "on" : "") + '" data-val="' + t + '">' + t + "</button>"
+        }).join("") + "</div>", e += '<label class="f">Exact time (optional)</label><input class="tf" data-field="time" value="' + et(a.time || "") + '" placeholder="e.g. 16:00">', e += '<label class="f">Reward</label><div class="stepper"><button data-step="amount" data-d="-1">−</button><b id="amtB">R' + a.amount + '</b><button data-step="amount" data-d="1">＋</button></div>', e += '<label class="f">Repeats on</label><div class="days" data-days>' + s.map(function(t, e) {
+            return '<button class="' + (a.days.indexOf(e) >= 0 ? "on" : "") + '" data-day="' + e + '">' + t[0] + "</button>"
+        }).join("") + "</div>", e += '<label class="f">If not done</label><div class="seg" data-seg="carry">' + [
+            ["none", "Nothing"],
+            ["later", "Snooze"],
+            ["next", "Carry over"]
+        ].map(function(t) {
+            return '<button class="' + (t[0] === a.carry ? "on" : "") + '" data-val="' + t[0] + '">' + t[1] + "</button>"
+        }).join("") + "</div>", e += '<div class="swrow"><div class="g"><div class="t">Alarm reminder</div></div><div class="sw' + (a.alarm ? " on" : "") + '" data-flag="alarm"></div></div>', e += '<div class="swrow"><div class="g"><div class="t">Mute this alarm</div></div><div class="sw' + (a.mute ? " on" : "") + '" data-flag="mute"></div></div>', e += '<div class="swrow"><div class="g"><div class="t">Lose money if skipped</div><div class="s">Deduct ' + (a.penalty || 2) + ' when not done</div></div><div class="sw' + (a.penalty ? " on" : "") + '" data-flag="penalty"></div></div>', e += '<div class="swrow"><div class="g"><div class="t">Active</div></div><div class="sw' + (a.active ? " on" : "") + '" data-flag="active"></div></div>', e += '<div style="height:12px"></div><button class="btn pri" data-act="save-task">' + (a._new ? "Add task" : "Save changes") + "</button>", a._new || (e += '<button class="btn bad" style="width:100%;margin-top:8px" data-deltask="' + t.id + '">Delete task</button>'), G(a._new ? "New task" : "Edit task", e)
+    }
+
+    function Y(t) {
+        var a = J = t ? JSON.parse(JSON.stringify(t)) : {
+                icon: "🎁",
+                name: "",
+                price: 0,
+                status: "active",
+                repeatableDaily: !1,
+                _new: !0
+            },
+            e = '<label class="f">Picture</label><div class="picgrid" data-grid="icon">' + ["🚗", "🧱", "🚲", "🧩", "🪁", "🎮", "🧸", "🎁", "🎀", "🎊", "🎉", "🎈", "🪀", "🎯", "🎲", "🎳", "🎪", "🎭", "🎨", "🖼️", "🎬", "🛴", "🏰", "📚", "🧩", "🎨", "🎸", "🎹", "🎤", "🎧", "📱", "💻", "🖥️", "📺", "🎮", "🕹️", "📷", "📸", "📹", "🎥", "📡", "🧩", "🪁", "🛹", "🛼", "🏍️", "🛵", "🚀", "🛸", "🧳", "⌛", "⏳", "🎪"].map(function(t) {
+                return '<button class="' + (t === a.icon ? "on" : "") + '" data-pick="' + t + '">' + t + "</button>"
+            }).join("") + "</div>";
+        e += '<label class="f">What is it?</label><input class="tf" data-field="name" value="' + et(a.name) + '">', e += '<label class="f">Price (R)</label><input class="tf" data-field="price" value="' + (a.price || "") + '" inputmode="numeric">', e += '<label class="f">Show now?</label><div class="seg" data-seg="status"><button class="' + ("active" === a.status ? "on" : "") + '" data-val="active">Active</button><button class="' + ("wishlist" === a.status ? "on" : "") + '" data-val="wishlist">Wishlist</button></div>', e += '<label class="f">Repeatable?</label><div class="seg" data-seg="repeatableDaily"><button class="' + (a.repeatableDaily ? "on" : "") + '" data-val="true">Yes, daily</button><button class="' + (!a.repeatableDaily ? "on" : "") + '" data-val="false">Once per day</button></div>', e += '<div style="height:12px"></div><button class="btn pri" data-act="save-goal">Save goal</button>';
+        a.id && !a._new && (e += '<button class="btn" data-act="delete-goal" style="margin-top:8px">Delete goal</button>');
+        G(a._new ? "New goal" : "Edit goal", e)
+    }
+
+    function U(t) {
+        var a = J = t ? JSON.parse(JSON.stringify(t)) : {
+                name: "",
+                av: "🙂",
+                color: "#34c08a",
+                colorLite: "#cdeede",
+                _new: !0
+            },
+            e = '<label class="f">Name</label><input class="tf" data-field="name" value="' + et(a.name) + '">';
+        e += '<label class="f">Face</label><div class="picgrid" data-grid="av">' + ["🦖", "🐰", "🦁", "🦊", "🐻", "🐱", "🐶", "🦄", "🐸"].map(function(t) {
+            return '<button class="' + (t === a.av ? "on" : "") + '" data-pickav="' + t + '">' + t + "</button>"
+        }).join("") + "</div>", e += '<label class="f">Colour</label><div class="days" data-cols>' + [
+            ["#ff9f5c", "#ffe4cc"],
+            ["#ff7fb0", "#ffd9e8"],
+            ["#34c08a", "#cdeede"],
+            ["#8a7ff0", "#e6e2fb"],
+            ["#5aa9e6", "#d6ecfb"],
+            ["#e6b800", "#fff0bf"]
+        ].map(function(t) {
+            return '<button class="' + (t[0] === a.color ? "on" : "") + '" data-col="' + t[0] + '" data-collite="' + t[1] + '" style="background:' + t[0] + ";border-color:" + t[0] + ';height:38px"></button>'
+        }).join("") + "</div>", e += '<div style="height:14px"></div><button class="btn pri" data-act="save-child">' + (a._new ? "Add child" : "Save") + "</button>", a._new || (e += '<button class="btn bad" style="width:100%;margin-top:8px" data-delchild="' + t.id + '">Remove child</button>'), G(a._new ? "New child" : "Edit child", e)
+    }
+    var Q, X, Z = "";
+
+    function $(t) {
+        Z.length >= 4 || (Z += t, tt(), 4 === Z.length && setTimeout(function() {
+            Z === (Core.getState().pin || "1234") ? (Z = "", tt(), document.getElementById("pinw").classList.remove("show"), document.getElementById("admin").classList.add("show"), q()) : (Z = "", tt(), at("Wrong PIN"))
+        }, 150))
+    }
+
+    function tt() {
+        for (var t = document.getElementById("pdots").children, a = 0; a < 4; a++) t[a].className = a < Z.length ? "f" : ""
+    }
+
+    function at(t) {
+        var a = document.getElementById("toast");
+        a.textContent = t, a.classList.add("show"), clearTimeout(X), X = setTimeout(function() {
+            a.classList.remove("show")
+        }, 1600)
+    }
+
+    function et(t) {
+        return String(null == t ? "" : t).replace(/"/g, "&quot;")
+    }
+
+    function nt(t, a) {
+        (t.closest(".sheet") || document).querySelectorAll(a).forEach(function(t) {
+            t.classList.remove("on")
+        }), t.classList.add("on")
+    }
+
+    function st() {
+        Core.reconcile(v()), L(), W()
+    }
+    Q = document.getElementById("pad"), [1, 2, 3, 4, 5, 6, 7, 8, 9].forEach(function(t) {
+        Q.innerHTML += '<button data-pin="' + t + '">' + t + "</button>"
+    }), Q.innerHTML += '<button class="blank"></button><button data-pin="0">0</button><button data-pindel="1">⌫</button>', document.addEventListener("click", function(t) {
+        var a = t.target.closest("[data-act],[data-do],[data-toggle],[data-lang],[data-akid],[data-tab],[data-dispute],[data-edit],[data-newtask],[data-money],[data-goal],[data-newgoal],[data-activate],[data-child],[data-newchild],[data-set-lang],[data-pin],[data-pindel],[data-pick],[data-pickav],[data-val],[data-day],[data-flag],[data-step],[data-col],[data-cf],[data-ct],[data-copyfrom],[data-cloneto],[data-deltask],[data-delchild],[data-seg],[data-alarmtoggle],[data-lead],[data-snooze],[data-ringnow],[data-redeem]");
+        if (a)
+            if (P || "enable-sound" !== a.getAttribute("data-act")) {
+                var e = a.getAttribute("data-act");
+                if (a.hasAttribute("data-do")) D(a.getAttribute("data-do"), a);
+                else {
+                    if (a.hasAttribute("data-toggle")) {
+                        var n = a.getAttribute("data-toggle");
+                        return y[n] = !y[n], void x()
+                    }
+                    if (a.hasAttribute("data-alarmtoggle")) return I = !I, void N();
+                    if (a.hasAttribute("data-snooze")) return Core.snooze(m().id, a.getAttribute("data-snooze"), v()), at("af" === g() ? "Sluimer 5 min" : "Snoozed 5 min"), void N();
+                    if (a.hasAttribute("data-ringnow")) return P || O(), S = Date.now() + 3200, B = Date.now(), H(), M([180, 90, 180, 90, 180]), void N();
+                    if (a.hasAttribute("data-lead")) return Core.getState().settings.alarmLeadMin = parseInt(a.getAttribute("data-lead"), 10), Core.save(), at("Saved"), void q();
+                    if (a.hasAttribute("data-lang")) return Core.getState().kidLang = a.getAttribute("data-lang"), Core.save(), void L();
+                    if (a.hasAttribute("data-pin")) $(parseInt(a.getAttribute("data-pin"), 10));
+                    else {
+                        if (a.hasAttribute("data-pindel")) return Z = Z.slice(0, -1), void tt();
+                        if (a.hasAttribute("data-akid")) return o = parseInt(a.getAttribute("data-akid"), 10), void q();
+                        if (a.hasAttribute("data-tab")) return l = a.getAttribute("data-tab"), void q();
+                        if (a.hasAttribute("data-dispute")) return at(Core.dispute(a.getAttribute("data-dispute"), v()).ok ? "Reversed" : "Locked — past day"), void q();
+                        if (a.hasAttribute("data-edit")) K(Core.task(a.getAttribute("data-edit")));
+                        else if (a.hasAttribute("data-newtask")) K(null);
+                        else if (a.hasAttribute("data-money")) ! function(t) {
+                            J = {
+                                kind: t,
+                                amount: "",
+                                note: ""
+                            };
+                            var a = '<label class="f">Amount (R)</label><input class="tf" data-field="amount" inputmode="numeric">';
+                            a += '<label class="f">Note (optional)</label><input class="tf" data-field="note">', "advance" === t && (a += '<div class="note">Wallet may go negative until earned back.</div>'), G({
+                                spend: "Log spending",
+                                advance: "Give advance",
+                                adjust: "Adjust balance"
+                            } [t], a += '<div style="height:12px"></div><button class="btn pri" data-act="save-money" data-kind="' + t + '">Save</button>')
+                        }(a.getAttribute("data-money"));
+                        else if (a.hasAttribute("data-redeem")) {
+                            var n = m();
+                            if (n) {
+                                var i = Core.redeemGoal(n.id, a.getAttribute("data-redeem"), v());
+                                i.ok ? (at("Goal redeemed! R" + i.coins), k(), A()) : at("Cannot redeem: " + (i.reason === "already-redeemed" ? "Already claimed today" : i.reason === "insufficient-balance" ? "Not enough coins" : "Error"))
+                            }
+                        } else if (a.hasAttribute("data-goal")) Y(Core.getState().goals.filter(function(t) {
+                            return t.id === a.getAttribute("data-goal")
+                        })[0]);
+                        else if (a.hasAttribute("data-newgoal")) Y(null);
+                        else {
+                            if (a.hasAttribute("data-activate")) return Core.setGoalStatus(a.getAttribute("data-activate"), "active"), at("Activated"), void q();
+                            if (a.hasAttribute("data-child")) U(Core.child(a.getAttribute("data-child")));
+                            else if (a.hasAttribute("data-newchild")) U(null);
+                            else {
+                                if (a.hasAttribute("data-set-lang")) return Core.getState().kidLang = a.getAttribute("data-set-lang"), Core.save(), at("Kid language set"), void q();
+                                if (a.hasAttribute("data-deltask")) return Core.removeTask(a.getAttribute("data-deltask")), V(), at("Deleted"), void q();
+                                if (a.hasAttribute("data-delchild")) return Core.removeChild(a.getAttribute("data-delchild")), o = 0, V(), at("Removed"), void q();
+                                if (a.hasAttribute("data-cloneto")) return Core.cloneWeek(z().id, a.getAttribute("data-cloneto")), V(), at("Week cloned"), void q();
+                                if (a.hasAttribute("data-pick")) return J.icon = a.getAttribute("data-pick"), void nt(a, "[data-grid] button");
+                                if (a.hasAttribute("data-pickav")) return J.av = a.getAttribute("data-pickav"), void nt(a, "[data-grid] button");
+                                if (a.hasAttribute("data-col")) return J.color = a.getAttribute("data-col"), J.colorLite = a.getAttribute("data-collite"), void nt(a, "[data-cols] button");
+                                if (a.hasAttribute("data-val")) {
+                                    var i = a.closest("[data-seg]");
+                                    return J[i.getAttribute("data-seg")] = a.getAttribute("data-val"), void nt(a, "[data-seg='" + i.getAttribute("data-seg") + "'] button")
+                                }
+                                if (a.hasAttribute("data-day")) {
+                                    var r = parseInt(a.getAttribute("data-day"), 10),
+                                        u = J.days.indexOf(r);
+                                    return u >= 0 ? J.days.splice(u, 1) : J.days.push(r), void a.classList.toggle("on")
+                                }
+                                if (a.hasAttribute("data-flag")) {
+                                    var p = a.getAttribute("data-flag");
+                                    return "penalty" === p ? J.penalty = J.penalty ? 0 : 2 : J[p] = !J[p], void a.classList.toggle("on")
+                                }
+                                if (a.hasAttribute("data-step")) return J.amount = Math.max(0, (J.amount || 0) + parseInt(a.getAttribute("data-d"), 10)), void(document.getElementById("amtB").textContent = "R" + J.amount);
+                                if (a.hasAttribute("data-cf")) return J.from = parseInt(a.getAttribute("data-cf"), 10), void nt(a, "[data-copyfrom] button");
+                                if (a.hasAttribute("data-ct")) {
+                                    var b = parseInt(a.getAttribute("data-ct"), 10),
+                                        h = J.to.indexOf(b);
+                                    return h >= 0 ? J.to.splice(h, 1) : J.to.push(b), void a.classList.toggle("on")
+                                }
+                                switch (e) {
+                                    case "open-pin":
+                                        document.getElementById("pinw").classList.add("show");
+                                        break;
+                                    case "close-pin":
+                                        Z = "", tt(), document.getElementById("pinw").classList.remove("show");
+                                        break;
+                                    case "exit-admin":
+                                        document.getElementById("admin").classList.remove("show"), L();
+                                        break;
+                                    case "close-sheet":
+                                        V();
+                                        break;
+                                    case "undo":
+                                        c && (Core.undo(c.id), c = null), document.getElementById("undo").classList.remove("show"), k(), A(), x();
+                                        break;
+                                    case "save-task":
+                                        w = z(), (C = J)._new ? (delete C._new, Core.addTask(w.id, C)) : Core.updateTask(C.id, C), V(), at("Saved"), q();
+                                        break;
+                                    case "save-goal":
+                                        ! function() {
+                                            var t = z(),
+                                                a = J;
+                                            a.price = parseInt(a.price, 10) || 0, a.repeatableDaily = "true" === String(a.repeatableDaily), a._new ? (delete a._new, Core.addGoal(t.id, a)) : Core.updateGoal(a.id, {
+                                                name: a.name,
+                                                price: a.price,
+                                                icon: a.icon,
+                                                status: a.status,
+                                                repeatableDaily: a.repeatableDaily
+                                            }), V(), at("Saved"), q()
+                                        }();
+                                        break;
+                                    case "delete-goal":
+                                        confirm("Delete this goal?") && (Core.deleteGoal(J.id), V(), at("Deleted"), q());
+                                        break;
+                                    case "save-child":
+                                        ! function() {
+                                            var t = J;
+                                            t._new ? (delete t._new, o = f().length, Core.addChild(t)) : Core.updateChild(t.id, {
+                                                name: t.name,
+                                                av: t.av,
+                                                color: t.color,
+                                                colorLite: t.colorLite
+                                            }), V(), at("Saved"), q()
+                                        }();
+                                        break;
+                                    case "save-money":
+                                        ! function(t) {
+                                            var a = z(),
+                                                e = parseInt(J.amount, 10) || 0,
+                                                n = J.note || "";
+                                            e > 0 && ("spend" === t ? Core.spend(a.id, e, n) : "advance" === t ? Core.advance(a.id, e, n) : Core.adjust(a.id, e, n)), V(), at("Done"), q()
+                                        }(a.getAttribute("data-kind"));
+                                        break;
+                                    case "copyday":
+                                        ! function() {
+                                            J = {
+                                                from: 0,
+                                                to: []
+                                            };
+                                            var t = '<label class="f">Copy this day…</label><div class="days" data-copyfrom>' + s.map(function(t, a) {
+                                                return '<button class="' + (0 === a ? "on" : "") + '" data-cf="' + a + '">' + t[0] + "</button>"
+                                            }).join("") + "</div>";
+                                            t += '<label class="f">…to these days</label><div class="days" data-copyto>' + s.map(function(t, a) {
+                                                return '<button data-ct="' + a + '">' + t[0] + "</button>"
+                                            }).join("") + "</div>", G("Copy a day", t += '<div style="height:12px"></div><button class="btn pri" data-act="save-copyday">Copy</button>')
+                                        }();
+                                        break;
+                                    case "save-copyday":
+                                        Core.copyDay(z().id, J.from, J.to), V(), at("Copied"), q();
+                                        break;
+                                    case "cloneweek":
+                                        ! function() {
+                                            var t = z(),
+                                                a = '<div class="note">Replace another child\'s whole week with a copy of ' + t.name + "'s tasks (their goals and wallet stay).</div>";
+                                            a += '<label class="f">Copy ' + t.name + '\'s week to…</label><div class="acard">', f().forEach(function(t, e) {
+                                                e !== o && (a += '<div class="arow" data-cloneto="' + t.id + '"><div class="ic" style="background:' + t.colorLite + '">' + t.av + '</div><div class="g"><div class="t">' + t.name + '</div></div><span class="chev">›</span></div>')
+                                            }), G("Clone week", a += "</div>")
+                                        }();
+                                        break;
+                                    case "newtask":
+                                        K(null);
+                                        break;
+                                    case "toggle-summary":
+                                        Core.getState().settings.weeklySummary = !Core.getState().settings.weeklySummary, Core.save(), a.classList.toggle("on");
+                                        break;
+                                    case "reset":
+                                        confirm("Reset ALL data to samples?") && (Core.reset(), o = 0, d = 0, y = null, q(), L(), at("Reset"));
+                                        break;
+                                    case "change-pin":
+                                        J = {
+                                            npin: "",
+                                            cpin: ""
+                                        }, G("Change parent PIN", '<label class="f">New PIN (4 digits)</label><input class="tf" data-field="npin" inputmode="numeric" maxlength="4" placeholder="••••"><label class="f">Confirm new PIN</label><input class="tf" data-field="cpin" inputmode="numeric" maxlength="4" placeholder="••••"><div class="note">You’ll use this code to open the parent screen. Default is 1234.</div><div style="height:12px"></div><button class="btn pri" data-act="save-pin">Save PIN</button>');
+                                        break;
+                                    case "save-pin":
+                                        ! function() {
+                                            var t = String(J.npin || "").replace(/\D/g, ""),
+                                                a = String(J.cpin || "").replace(/\D/g, "");
+                                            4 === t.length ? t === a ? (Core.setPin(t), V(), at("PIN updated")) : at("PINs don't match") : at("PIN must be 4 digits")
+                                        }();
+                                        break;
+                                    case "enable-sound":
+                                        O()
+                                }
+                                var w, C
+                            }
+                        }
+                    }
+                }
+            } else O()
+    }), document.addEventListener("input", function(t) {
+        var a = t.target.closest("[data-field]");
+        if (a) {
+            var e = a.getAttribute("data-field");
+            if (e && e.startsWith("screenTime")) {
+                var n = Core.getState().settings;
+                n[e] = a.value, Core.save(), document.getElementById("admin").classList.contains("show") && q(), W()
+            } else J && (J[e] = a.value)
+        }
+    });
+    var it = !1;
+
+    function dt() {
+        it || (it = !0, setInterval(W, 1e3), setInterval(function() {
+            Core.reconcile(v()), document.getElementById("admin").classList.contains("show") || A()
+        }, 6e4))
+    }
+    if (window.App = {
+            boot: st,
+            bootWith: function(t) {
+                Core.init(t), st(), dt()
+            },
+            rehydrate: function() {
+                L(), document.getElementById("admin").classList.contains("show") && q()
+            },
+            setClockOffset: function(t) {
+                u = t || 0
+            },
+            renderKid: L,
+            renderAdmin: q,
+            complete: D,
+            setChild: function(t) {
+                d = t, y = null, L()
+            },
+            Core: Core
+        }, window.MYDAY_SUPABASE || (Core.init(a), st(), dt()), "serviceWorker" in navigator) try {
+        navigator.serviceWorker.register("sw.js")
+    } catch (t) {}
+}()
