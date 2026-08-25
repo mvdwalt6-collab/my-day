@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Core } from "@/lib/core/adapter";
 import { createClient } from "@/lib/supabase/client";
+import { verifyPin } from "@/lib/pin";
 import type { Child, Goal, Task, Window } from "@/lib/core/types";
 
 type Props = {
@@ -23,6 +24,15 @@ const COLOR_CHOICES = [
   ["#e6b800", "#fff0bf"],
 ] as const;
 const AVATAR_CHOICES = ["🙂", "🦖", "🐰", "🦁", "🦊", "🐻", "🐱", "🐶", "🦄", "🐸"];
+
+type BoardMode = "kids" | "parent";
+type ParentTab = "board" | "manage" | "settings";
+
+const PARENT_TABS: Array<{ id: ParentTab; label: string }> = [
+  { id: "board", label: "Board" },
+  { id: "manage", label: "Manage" },
+  { id: "settings", label: "Settings" },
+];
 
 type ChildDraft = {
   name: string;
@@ -58,7 +68,14 @@ type GoalEditor = {
   repeatableDaily: boolean;
 };
 
-type MoneyAction = "spend" | "advance" | "adjust";
+type MoneyAction = "award" | "deduct" | "spend" | "advance";
+
+const MONEY_ACTIONS: Array<{ id: MoneyAction; label: string; hint: string }> = [
+  { id: "award", label: "Award", hint: "Special award — adds money to the wallet" },
+  { id: "deduct", label: "Deduct", hint: "Punishment or correction — takes money out" },
+  { id: "spend", label: "Spend", hint: "Child spends saved money on something" },
+  { id: "advance", label: "Advance", hint: "Pocket-money loan against future earnings" },
+];
 
 function makeTaskEditor(childId = ""): TaskEditor {
   return {
@@ -104,6 +121,14 @@ function formatClock(value: number) {
   }).format(value);
 }
 
+function formatDuration(totalSec: number) {
+  const sec = Math.max(0, Math.floor(totalSec));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function isTaskEditor(editor: TaskEditor, task: Task) {
   return editor.id === task.id;
 }
@@ -114,12 +139,13 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
   const [version, setVersion] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
+  const [bootError, setBootError] = useState<string | null>(null);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [childDraft, setChildDraft] = useState<ChildDraft>({ name: "", av: "🙂", color: COLOR_CHOICES[2][0], colorLite: COLOR_CHOICES[2][1] });
   const [newChild, setNewChild] = useState<ChildDraft>({ name: "", av: "🙂", color: COLOR_CHOICES[2][0], colorLite: COLOR_CHOICES[2][1] });
   const [taskEditor, setTaskEditor] = useState<TaskEditor>(makeTaskEditor());
   const [goalEditor, setGoalEditor] = useState<GoalEditor>(makeGoalEditor());
-  const [moneyAction, setMoneyAction] = useState<MoneyAction>("spend");
+  const [moneyAction, setMoneyAction] = useState<MoneyAction>("award");
   const [moneyAmount, setMoneyAmount] = useState("0");
   const [moneyNote, setMoneyNote] = useState("");
   const [copyFromDay, setCopyFromDay] = useState(0);
@@ -127,8 +153,13 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
   const [cloneTargetId, setCloneTargetId] = useState<string>("");
   const [toast, setToast] = useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [pinValue, setPinValue] = useState("");
-  const [screenStart, setScreenStart] = useState("");
-  const [screenEnd, setScreenEnd] = useState("");
+  const [mode, setMode] = useState<BoardMode>("kids");
+  const [parentTab, setParentTab] = useState<ParentTab>("board");
+  const [openEditor, setOpenEditor] = useState<"task" | "goal" | "money" | null>(null);
+  const [pinPromptOpen, setPinPromptOpen] = useState(false);
+  const [pinEntry, setPinEntry] = useState("");
+  const [pinSetupConfirm, setPinSetupConfirm] = useState("");
+  const [pinError, setPinError] = useState(false);
   const [alarmLeadMin, setAlarmLeadMin] = useState("5");
 
   function focusChild(child: Child | null) {
@@ -166,14 +197,12 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
         setCore(core);
         const state = core.getState();
         focusChild(state.children[0] ?? null);
-        setScreenStart(state.settings.screenTimeStart);
-        setScreenEnd(state.settings.screenTimeEnd);
         setAlarmLeadMin(String(state.settings.alarmLeadMin ?? 5));
         setLoading(false);
         setVersion((value) => value + 1);
       } catch (error) {
         if (!alive) return;
-        setToast({ kind: "error", text: error instanceof Error ? error.message : "Unable to load family" });
+        setBootError(error instanceof Error ? error.message : "Unable to load family");
         setLoading(false);
       }
     }
@@ -197,8 +226,13 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
         <section className="panel panel--hero">
           <div>
             <p className="eyebrow">{familyName}</p>
-            <h1>Loading the family board...</h1>
-            <p className="hero-copy">Signed in as {email}</p>
+            <h1>{bootError ? "Could not load the family board" : "Loading the family board..."}</h1>
+            <p className="hero-copy">{bootError ?? `Signed in as ${email}`}</p>
+            {bootError && (
+              <button type="button" onClick={() => window.location.reload()}>
+                Try again
+              </button>
+            )}
           </div>
         </section>
       </main>
@@ -229,6 +263,8 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
       days: [...task.days],
       active: task.active,
     });
+    setParentTab("manage");
+    setOpenEditor("task");
   }
 
   function beginGoalEdit(goal: Goal) {
@@ -241,6 +277,8 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
       status: goal.status,
       repeatableDaily: goal.repeatableDaily,
     });
+    setParentTab("manage");
+    setOpenEditor("goal");
   }
 
   async function saveChild() {
@@ -284,6 +322,7 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
       await core.addTask(taskEditor.childId || selectedChild.id, payload);
     }
     setTaskEditor(makeTaskEditor(selectedChild.id));
+    setOpenEditor(null);
   }
 
   async function saveGoal() {
@@ -301,17 +340,21 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
       await core.addGoal(goalEditor.childId || selectedChild.id, payload);
     }
     setGoalEditor(makeGoalEditor(selectedChild.id));
+    setOpenEditor(null);
   }
 
   async function saveMoney() {
     if (!core || !selectedChild) return;
-    const amount = Number(moneyAmount) || 0;
+    const amount = Math.abs(Number(moneyAmount) || 0);
     if (!amount) return;
-    if (moneyAction === "spend") await core.spend(selectedChild.id, amount, moneyNote.trim() || undefined);
-    if (moneyAction === "advance") await core.advance(selectedChild.id, amount, moneyNote.trim() || undefined);
-    if (moneyAction === "adjust") await core.adjust(selectedChild.id, amount, moneyNote.trim() || undefined);
+    const note = moneyNote.trim() || undefined;
+    if (moneyAction === "award") await core.adjust(selectedChild.id, amount, note ?? "Special award");
+    if (moneyAction === "deduct") await core.adjust(selectedChild.id, -amount, note ?? "Deduction");
+    if (moneyAction === "spend") await core.spend(selectedChild.id, amount, note);
+    if (moneyAction === "advance") await core.advance(selectedChild.id, amount, note);
     setMoneyAmount("0");
     setMoneyNote("");
+    setOpenEditor(null);
   }
 
   async function saveCopyDay() {
@@ -324,6 +367,351 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
     await core.cloneWeek(selectedChild.id, cloneTargetId);
   }
 
+  function requestParentMode() {
+    setPinEntry("");
+    setPinSetupConfirm("");
+    setPinError(false);
+    setPinPromptOpen(true);
+  }
+
+  async function submitPin() {
+    const ok = await verifyPin(pinEntry, tenantId, state?.pinHash ?? null);
+    if (!ok) {
+      setPinError(true);
+      setPinEntry("");
+      return;
+    }
+    setPinPromptOpen(false);
+    setMode("parent");
+  }
+
+  async function submitPinSetup() {
+    if (pinEntry.length !== 4 || pinEntry !== pinSetupConfirm) {
+      setPinError(true);
+      return;
+    }
+    await core?.setPin(pinEntry);
+    setPinPromptOpen(false);
+    setMode("parent");
+  }
+
+  const af = state.kidLang === "af";
+  const kidLabel = (task: Task) => (af && task.af ? task.af : task.en);
+
+  const hasPin = !!state?.pinHash;
+
+  const pinModal = pinPromptOpen ? (
+    <div className="pin-modal" role="dialog" aria-modal="true">
+      <div className="panel pin-modal__card">
+        {hasPin ? (
+          <>
+            <h2>{af ? "Ouer-PIN" : "Parent PIN"}</h2>
+            <p>{af ? "Sleutel die 4-syfer PIN in." : "Enter the 4-digit PIN to open the parent area."}</p>
+            <input
+              autoFocus
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pinEntry}
+              onChange={(event) => {
+                setPinError(false);
+                setPinEntry(event.target.value.replace(/\D/g, ""));
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && pinEntry.length === 4) void submitPin();
+              }}
+              placeholder="••••"
+            />
+            {pinError && <p className="pin-modal__error">{af ? "Verkeerde PIN, probeer weer." : "Wrong PIN, try again."}</p>}
+            <div className="btn-row">
+              <button className="btn btn--primary" disabled={pinEntry.length !== 4} onClick={() => void submitPin()}>
+                {af ? "Oopsluit" : "Unlock"}
+              </button>
+              <button className="btn btn--ghost" onClick={() => setPinPromptOpen(false)}>
+                {af ? "Kanselleer" : "Cancel"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2>{af ? "Stel 'n ouer-PIN" : "Set a parent PIN"}</h2>
+            <p>
+              {af
+                ? "Daar is nog geen PIN nie. Kies nou een sodat die kinders nie by die ouer-area kan kom nie."
+                : "No PIN is set yet. Choose one now so the kids can't reach the parent area."}
+            </p>
+            <input
+              autoFocus
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pinEntry}
+              onChange={(event) => {
+                setPinError(false);
+                setPinEntry(event.target.value.replace(/\D/g, ""));
+              }}
+              placeholder={af ? "Nuwe PIN" : "New PIN"}
+            />
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={pinSetupConfirm}
+              onChange={(event) => {
+                setPinError(false);
+                setPinSetupConfirm(event.target.value.replace(/\D/g, ""));
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void submitPinSetup();
+              }}
+              placeholder={af ? "Bevestig PIN" : "Confirm PIN"}
+            />
+            {pinError && (
+              <p className="pin-modal__error">
+                {af ? "PIN moet 4 syfers wees en ooreenstem." : "PINs must match and be exactly 4 digits."}
+              </p>
+            )}
+            <div className="btn-row">
+              <button className="btn btn--primary" disabled={pinEntry.length !== 4 || pinSetupConfirm.length !== 4} onClick={() => void submitPinSetup()}>
+                {af ? "Stoor & oopsluit" : "Save & unlock"}
+              </button>
+              <button
+                className="btn btn--ghost"
+                onClick={() => {
+                  setPinPromptOpen(false);
+                  setMode("parent");
+                }}
+              >
+                {af ? "Nie nou nie" : "Not now"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  ) : null;
+
+  if (mode === "kids") {
+    const kidBalance = selectedChild ? core?.balance(selectedChild.id) ?? 0 : 0;
+    const kidEarned = selectedChild ? core?.earnedToday(selectedChild.id, now) ?? 0 : 0;
+    const kidPossible = selectedChild ? core?.possibleToday(selectedChild.id, now) ?? 0 : 0;
+    const goalTotal = selectedGoals.reduce((sum: number, goal: Goal) => sum + goal.price, 0);
+    const goalToGo = Math.max(0, goalTotal - kidBalance);
+    const piggyPct = goalTotal > 0 ? Math.min(100, Math.round((kidBalance / goalTotal) * 100)) : kidBalance > 0 ? 100 : 0;
+    const screen = selectedChild ? core?.screenStatus(selectedChild.id, now) : null;
+    const screenPct = screen && screen.totalSec > 0 ? Math.max(0, Math.min(100, Math.round((screen.remainSec / screen.totalSec) * 100))) : 0;
+    const screenOut = !!screen && screen.remainSec <= 0;
+
+    return (
+      <main className="family-shell">
+        <header className="family-hero panel panel--hero panel--hero-slim">
+          <div>
+            <p className="eyebrow">{familyName}</p>
+            <h1>{selectedChild ? `${af ? "Hallo" : "Hi"} ${selectedChild.name}!` : af ? "Hallo!" : "Hi there!"}</h1>
+          </div>
+          <div className="hero-actions">
+            <button className="btn btn--ghost" onClick={requestParentMode}>🔒 {af ? "Ouers" : "Parents"}</button>
+          </div>
+        </header>
+
+        <section className="panel chip-panel chip-panel--compact">
+          <span className="chip-label">{af ? "Kies jou naam" : "Pick your name"}</span>
+          <div className="chip-row chip-row--compact">
+            {state.children.map((child) => (
+              <button
+                key={child.id}
+                className={`child-chip child-chip--mini ${child.id === selectedChild?.id ? "is-active" : ""}`}
+                style={{
+                  ["--chip" as string]: child.color,
+                  ["--chip-soft" as string]: child.colorLite,
+                } as React.CSSProperties}
+                onClick={() => focusChild(child)}
+              >
+                <span className="child-chip__avatar">{child.av}</span>
+                <span className="child-chip__stack">
+                  <span className="child-chip__name">{child.name}</span>
+                  <span className="child-chip__balance">{formatMoney(core?.balance(child.id) ?? 0)}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {selectedChild && (
+          <section
+            className="panel kid-board"
+            style={{
+              ["--chip" as string]: selectedChild.color,
+              ["--chip-soft" as string]: selectedChild.colorLite,
+            } as React.CSSProperties}
+          >
+            <header className="kid-board__head">
+              <span className="kid-board__avatar">{selectedChild.av}</span>
+              <div>
+                <h2>{selectedChild.name}</h2>
+                <p>
+                  {af ? "Beursie" : "Wallet"}: <strong>{formatMoney(kidBalance)}</strong>
+                  {" · "}
+                  {af ? "Vandag" : "Today"}: <strong>{formatMoney(kidEarned)}</strong> / {formatMoney(kidPossible)}
+                </p>
+              </div>
+            </header>
+
+            <div className="kid-vitals">
+              <div className="kid-vital kid-vital--piggy">
+                <div className="piggy" role="img" aria-label={`${piggyPct}%`}>
+                  <div className="piggy__fill" style={{ height: `${piggyPct}%` }} />
+                  <span className="piggy__emoji">🐷</span>
+                </div>
+                <div className="kid-vital__body">
+                  <h3>{af ? "Spaarvarkie" : "Piggy bank"}</h3>
+                  <p className="kid-vital__big">
+                    {formatMoney(kidBalance)}
+                    {goalTotal > 0 && <span> / {formatMoney(goalTotal)}</span>}
+                  </p>
+                  <p>
+                    {goalTotal > 0
+                      ? `${piggyPct}% ${af ? "vol" : "full"}${goalToGo > 0 ? ` · ${af ? "nog" : "still"} ${formatMoney(goalToGo)}` : ""}`
+                      : af ? "Geen spaardoel nog nie" : "No savings goal yet"}
+                  </p>
+                </div>
+              </div>
+
+              <div className={`kid-vital kid-vital--timer ${screen?.running ? "is-on" : ""} ${screenOut ? "is-out" : ""}`}>
+                <div className="kid-vital__body">
+                  <h3>{af ? "Skermtyd oor" : "Screen time left"}</h3>
+                  <p className="kid-timer__digits">{screen ? formatDuration(screen.remainSec) : "--:--"}</p>
+                  <div className="goal-progress kid-timer__bar">
+                    <span className="goal-progress__fill" style={{ width: `${screenPct}%` }} />
+                  </div>
+                  <p>
+                    {screenOut
+                      ? af ? "Tyd is op vir vandag!" : "Time's up for today!"
+                      : screen?.running
+                        ? af ? "Tyd loop nou…" : "Counting down…"
+                        : `${af ? "Gebruik" : "Used"} ${formatDuration(screen?.usedSec ?? 0)} / ${formatDuration(screen?.totalSec ?? 0)}`}
+                  </p>
+                </div>
+                {screen?.running ? (
+                  <button className="btn btn--ghost kid-timer__btn" onClick={() => void core?.pauseScreen(selectedChild.id, now)}>
+                    ⏸ {af ? "Stop" : "Pause"}
+                  </button>
+                ) : (
+                  <button className="btn btn--primary kid-timer__btn" disabled={screenOut} onClick={() => void core?.startScreen(selectedChild.id, now)}>
+                    ▶ {af ? "Begin" : "Start"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="kid-board__section">
+              <div className="section-head section-head--tight">
+                <h3>{af ? `${selectedChild.name} se takies` : `${selectedChild.name}'s tasks`}</h3>
+                <span>{af ? "Elke takie se beloning" : "Each task shows its reward"}</span>
+              </div>
+              {WINDOWS.map((win) => {
+                const tasks = selectedTasks.filter((task) => task.win === win);
+                if (!tasks.length) return null;
+                return (
+                  <section key={win} className="window-block window-block--slim">
+                    <div className="window-block__head">
+                      <h3>{windowLabel(win)}</h3>
+                      <span>
+                        {tasks.length} {af ? "takies" : "tasks"} · {formatMoney(tasks.reduce((sum, task) => sum + task.amount, 0))}
+                      </span>
+                    </div>
+                    <div className="task-list">
+                      {tasks.map((task) => {
+                        const taskState = core?.taskState(task, now) ?? "inactive";
+                        const pending = selectedPending.find((item) => item.task?.id === task.id);
+                        return (
+                          <article key={task.id} className={`task-card task-card--slim task-card--${taskState}`}>
+                            <div className="task-card__main">
+                              <div className="task-card__icon">{task.icon}</div>
+                              <div>
+                                <h4>{kidLabel(task)}</h4>
+                                {task.time && <p>{task.time}</p>}
+                              </div>
+                            </div>
+                            <div className="task-card__meta">
+                              <span className="pill">+{formatMoney(task.amount)}</span>
+                            </div>
+                            <div className="task-card__actions">
+                              {taskState === "available" && (
+                                <button className="btn btn--primary" onClick={() => void core?.complete(selectedChild.id, task.id, now)}>
+                                  {af ? "Klaar!" : "Done!"}
+                                </button>
+                              )}
+                              {pending && (
+                                <button className="btn btn--ghost" onClick={() => void core?.undo(pending.completion.id)}>
+                                  {af ? "Oeps" : "Undo"}
+                                </button>
+                              )}
+                              {taskState === "locked" && <span className="task-hint">{af ? "Nog nie" : "Not yet"}</span>}
+                              {taskState === "missed" && <span className="task-hint task-hint--bad">{af ? "Gemis" : "Missed"}</span>}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+              {!selectedTasks.length && <p className="empty-state">{af ? "Geen takies vandag nie!" : "No tasks today!"}</p>}
+            </div>
+
+            <div className="kid-board__section">
+              <div className="section-head section-head--tight">
+                <h3>{af ? `${selectedChild.name} spaar vir` : `${selectedChild.name} is saving for`}</h3>
+                <span>
+                  {selectedGoals.length
+                    ? goalToGo > 0
+                      ? `${af ? "Nog" : "Still"} ${formatMoney(goalToGo)} ${af ? "kort vir alles" : "to go for everything"}`
+                      : af ? "Genoeg vir alles!" : "Enough for everything!"
+                    : ""}
+                </span>
+              </div>
+              <div className="goal-list">
+                {selectedGoals.length ? (
+                  selectedGoals.map((goal: Goal) => {
+                    const canRedeem = kidBalance >= goal.price;
+                    const redeemedToday = core?.isGoalRedeemedToday(selectedChild.id, goal.id, now) ?? false;
+                    const progress = goal.price > 0 ? Math.min(100, Math.round((kidBalance / goal.price) * 100)) : 100;
+                    return (
+                      <article key={goal.id} className={`goal-card goal-card--progress ${canRedeem ? "goal-card--ready" : ""}`}>
+                        <div className="goal-card__icon">{goal.icon}</div>
+                        <div className="goal-card__body">
+                          <h3>{goal.name}</h3>
+                          <div className="goal-progress">
+                            <span className="goal-progress__fill" style={{ width: `${progress}%` }} />
+                          </div>
+                          <p>
+                            {canRedeem
+                              ? af ? "Gereed om te kry!" : "Ready to redeem!"
+                              : `${formatMoney(kidBalance)} / ${formatMoney(goal.price)} · ${af ? "nog" : "still"} ${formatMoney(goal.price - kidBalance)}`}
+                          </p>
+                          {redeemedToday && <span className="task-hint">{af ? "Reeds gekry vandag" : "Already claimed today"}</span>}
+                        </div>
+                        <button className="btn btn--primary" disabled={!canRedeem} onClick={() => void core?.redeemGoal(selectedChild.id, goal.id, now)}>
+                          {af ? "Kry dit!" : "Redeem"}
+                        </button>
+                      </article>
+                    );
+                  })
+                ) : (
+                  <p className="empty-state">{af ? "Geen belonings nog nie." : "No active goals."}</p>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {pinModal}
+        {toast && <div className={`toast toast--${toast.kind}`}>{toast.text}</div>}
+      </main>
+    );
+  }
+
   return (
     <main className="family-shell">
       <header className="family-hero panel panel--hero">
@@ -333,20 +721,29 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
           <p className="hero-copy">Signed in as {email}</p>
         </div>
         <div className="hero-actions">
+          <button className="btn btn--primary" onClick={() => setMode("kids")}>Kids&apos; view</button>
           <a className="btn btn--ghost" href="/auth/signout">Sign out</a>
         </div>
       </header>
 
-      <section className="panel chip-panel">
-        <div className="section-head">
+      <nav className="panel tab-bar">
+        {PARENT_TABS.map((tab) => (
+          <button key={tab.id} className={parentTab === tab.id ? "is-active" : ""} onClick={() => setParentTab(tab.id)}>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      <section className="panel chip-panel chip-panel--compact">
+        <div className="section-head section-head--tight">
           <h2>Children</h2>
           <span>{state.children.length} profiles</span>
         </div>
-        <div className="chip-row">
+        <div className="chip-row chip-row--compact">
           {state.children.map((child) => (
             <button
               key={child.id}
-              className={`child-chip ${child.id === selectedChild?.id ? "is-active" : ""}`}
+              className={`child-chip child-chip--mini ${child.id === selectedChild?.id ? "is-active" : ""}`}
               style={{
                 ["--chip" as string]: child.color,
                 ["--chip-soft" as string]: child.colorLite,
@@ -354,12 +751,16 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
               onClick={() => focusChild(child)}
             >
               <span className="child-chip__avatar">{child.av}</span>
-              <span className="child-chip__name">{child.name}</span>
+              <span className="child-chip__stack">
+                <span className="child-chip__name">{child.name}</span>
+                <span className="child-chip__balance">{formatMoney(core?.balance(child.id) ?? 0)}</span>
+              </span>
             </button>
           ))}
         </div>
       </section>
 
+      {parentTab === "board" && (
       <section className="stats-grid">
         <article className="panel stat-card">
           <span className="eyebrow">Wallet</span>
@@ -388,8 +789,10 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
           )}
         </article>
       </section>
+      )}
 
-      <section className="board-grid">
+      <section className={parentTab === "board" ? "board-grid" : "board-solo"}>
+        {parentTab === "board" && (
         <div className="panel board-column">
           <div className="section-head">
             <h2>Today</h2>
@@ -466,8 +869,10 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
             </div>
           </section>
         </div>
+        )}
 
         <aside className="panel side-column">
+          {parentTab === "board" && (
           <section>
             <div className="section-head">
               <h2>Rewards</h2>
@@ -499,7 +904,9 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
               )}
             </div>
           </section>
+          )}
 
+          {parentTab === "board" && (
           <section>
             <div className="section-head">
               <h2>This week</h2>
@@ -512,7 +919,9 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
               <div><strong>{formatMoney(selectedSummary?.earned ?? 0)}</strong><span>earned</span></div>
             </div>
           </section>
+          )}
 
+          {parentTab === "settings" && (
           <section>
             <div className="section-head">
               <h2>Settings</h2>
@@ -530,15 +939,36 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
                 </div>
               </div>
 
-              <label className="field">
-                <span>Screen time start</span>
-                <input value={screenStart} onChange={(event) => setScreenStart(event.target.value)} onBlur={() => void core?.updateSettings({ screenTimeStart: screenStart })} placeholder="18:00" />
-              </label>
-
-              <label className="field">
-                <span>Screen time end</span>
-                <input value={screenEnd} onChange={(event) => setScreenEnd(event.target.value)} onBlur={() => void core?.updateSettings({ screenTimeEnd: screenEnd })} placeholder="19:00" />
-              </label>
+              <div className="setting-row">
+                <div>
+                  <strong>Screen time budget per child</strong>
+                  <p>Daily minutes each child may use. The +/− buttons add or remove extra time for today only.</p>
+                </div>
+              </div>
+              {state.children.map((child) => {
+                const status = core?.screenStatus(child.id, now);
+                return (
+                  <div key={child.id} className="screen-alarm-row">
+                    <span className="screen-alarm-row__name">{child.av} {child.name}</span>
+                    <label className="field">
+                      <span>Minutes per day</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={child.screenDailyMin}
+                        onChange={(event) => void core?.updateChild(child.id, { screenDailyMin: Math.max(0, Number(event.target.value) || 0) })}
+                      />
+                    </label>
+                    <div className="field">
+                      <span>Today: {formatDuration(status?.remainSec ?? 0)} left</span>
+                      <div className="btn-row">
+                        <button className="btn btn--ghost" onClick={() => void core?.adjustScreen(child.id, 15, now)}>+15m</button>
+                        <button className="btn btn--ghost" onClick={() => void core?.adjustScreen(child.id, -15, now)}>−15m</button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
 
               <label className="field">
                 <span>Alarm lead minutes</span>
@@ -562,7 +992,47 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
               </label>
             </div>
           </section>
+          )}
 
+          {parentTab === "settings" && (
+          <section>
+            <div className="section-head">
+              <h2>Add a child</h2>
+              <span>New family profile</span>
+            </div>
+            <div className="setting-stack">
+              <label className="field">
+                <span>Name</span>
+                <input value={newChild.name} onChange={(event) => setNewChild((draft) => ({ ...draft, name: event.target.value }))} />
+              </label>
+              <label className="field">
+                <span>Avatar</span>
+                <div className="chip-row chip-row--tight">
+                  {AVATAR_CHOICES.map((avatar) => (
+                    <button key={avatar} className={`child-chip ${newChild.av === avatar ? "is-active" : ""}`} onClick={() => setNewChild((draft) => ({ ...draft, av: avatar }))} type="button">
+                      <span className="child-chip__avatar">{avatar}</span>
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <label className="field">
+                <span>Colour</span>
+                <div className="chip-row chip-row--tight">
+                  {COLOR_CHOICES.map(([color, soft]) => (
+                    <button key={color} className={`child-chip ${newChild.color === color ? "is-active" : ""}`} style={{ ["--chip" as string]: color, ["--chip-soft" as string]: soft } as React.CSSProperties} onClick={() => setNewChild((draft) => ({ ...draft, color, colorLite: soft }))} type="button">
+                      <span className="child-chip__avatar" style={{ background: soft }}>•</span>
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <div className="btn-row">
+                <button className="btn btn--primary" onClick={() => void addChild()}>Add child</button>
+              </div>
+            </div>
+          </section>
+          )}
+
+          {parentTab === "settings" && (
           <section>
             <div className="section-head">
               <h2>Ledger</h2>
@@ -581,18 +1051,20 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
               {!state.ledger.length && <p className="empty-state">No transactions yet.</p>}
             </div>
           </section>
+          )}
 
+          {parentTab === "manage" && (
           <section>
             <div className="section-head">
-              <h2>Manage</h2>
-              <span>CRUD</span>
+              <h2>Manage {selectedChild?.name ?? "—"}</h2>
+              <span>Tasks, goals, awards & deductions</span>
             </div>
 
             <div className="setting-stack">
               <div className="setting-row">
                 <div>
-                  <strong>Selected child</strong>
-                  <p>Edit the current profile or add another one.</p>
+                  <strong>Child profile</strong>
+                  <p>Name, avatar and colour. Adding a child moved to Settings.</p>
                 </div>
               </div>
 
@@ -629,47 +1101,24 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
 
               <div className="setting-row">
                 <div>
-                  <strong>New child</strong>
-                  <p>Add another profile to the family.</p>
+                  <strong>{taskEditor.id ? "Edit task" : "Tasks"}</strong>
+                  <p>{selectedChild ? `Chores and routines for ${selectedChild.name}` : "Choose a child first"}</p>
                 </div>
+                <button
+                  className={openEditor === "task" ? "btn btn--ghost" : "btn btn--primary"}
+                  onClick={() => {
+                    if (openEditor === "task") {
+                      setOpenEditor(null);
+                    } else {
+                      setTaskEditor(makeTaskEditor(selectedChild?.id ?? ""));
+                      setOpenEditor("task");
+                    }
+                  }}
+                >
+                  {openEditor === "task" ? "Close" : "+ Add task"}
+                </button>
               </div>
-              <div className="setting-stack">
-                <label className="field">
-                  <span>Name</span>
-                  <input value={newChild.name} onChange={(event) => setNewChild((draft) => ({ ...draft, name: event.target.value }))} />
-                </label>
-                <label className="field">
-                  <span>Avatar</span>
-                  <div className="chip-row chip-row--tight">
-                    {AVATAR_CHOICES.map((avatar) => (
-                      <button key={avatar} className={`child-chip ${newChild.av === avatar ? "is-active" : ""}`} onClick={() => setNewChild((draft) => ({ ...draft, av: avatar }))} type="button">
-                        <span className="child-chip__avatar">{avatar}</span>
-                      </button>
-                    ))}
-                  </div>
-                </label>
-                <label className="field">
-                  <span>Colour</span>
-                  <div className="chip-row chip-row--tight">
-                    {COLOR_CHOICES.map(([color, soft]) => (
-                      <button key={color} className={`child-chip ${newChild.color === color ? "is-active" : ""}`} style={{ ["--chip" as string]: color, ["--chip-soft" as string]: soft } as React.CSSProperties} onClick={() => setNewChild((draft) => ({ ...draft, color, colorLite: soft }))} type="button">
-                        <span className="child-chip__avatar" style={{ background: soft }}>•</span>
-                      </button>
-                    ))}
-                  </div>
-                </label>
-                <div className="btn-row">
-                  <button className="btn btn--primary" onClick={() => void addChild()}>Add child</button>
-                </div>
-              </div>
-
-              <div className="setting-row">
-                <div>
-                  <strong>{taskEditor.id ? "Edit task" : "New task"}</strong>
-                  <p>{selectedChild?.name ?? "Choose a child first"}</p>
-                </div>
-                <button className="btn btn--ghost" onClick={() => setTaskEditor(makeTaskEditor(selectedChild?.id ?? ""))}>Reset</button>
-              </div>
+              {openEditor === "task" && (
               <div className="setting-stack">
                 <label className="field">
                   <span>Title</span>
@@ -722,14 +1171,28 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
                   {taskEditor.id && <button className="btn btn--ghost" onClick={() => void core?.removeTask(taskEditor.id!)}>Delete task</button>}
                 </div>
               </div>
+              )}
 
               <div className="setting-row">
                 <div>
-                  <strong>{goalEditor.id ? "Edit goal" : "New goal"}</strong>
-                  <p>{selectedChild?.name ?? "Choose a child first"}</p>
+                  <strong>{goalEditor.id ? "Edit savings goal" : "Savings goals"}</strong>
+                  <p>{selectedChild ? `What ${selectedChild.name} is saving towards` : "Choose a child first"}</p>
                 </div>
-                <button className="btn btn--ghost" onClick={() => setGoalEditor(makeGoalEditor(selectedChild?.id ?? ""))}>Reset</button>
+                <button
+                  className={openEditor === "goal" ? "btn btn--ghost" : "btn btn--primary"}
+                  onClick={() => {
+                    if (openEditor === "goal") {
+                      setOpenEditor(null);
+                    } else {
+                      setGoalEditor(makeGoalEditor(selectedChild?.id ?? ""));
+                      setOpenEditor("goal");
+                    }
+                  }}
+                >
+                  {openEditor === "goal" ? "Close" : "+ Add goal"}
+                </button>
               </div>
+              {openEditor === "goal" && (
               <div className="setting-stack">
                 <label className="field">
                   <span>Name</span>
@@ -760,34 +1223,73 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
                   {goalEditor.id && <button className="btn btn--ghost" onClick={() => void core?.deleteGoal(goalEditor.id!)}>Delete goal</button>}
                 </div>
               </div>
+              )}
 
               <div className="setting-row">
                 <div>
-                  <strong>Money tools</strong>
-                  <p>Spend, advance, or adjust the wallet.</p>
+                  <strong>Awards & deductions</strong>
+                  <p>
+                    {selectedChild ? `${selectedChild.name}'s wallet: ${formatMoney(core?.balance(selectedChild.id) ?? 0)}` : "Choose a child first"}
+                  </p>
                 </div>
+                <button
+                  className={openEditor === "money" ? "btn btn--ghost" : "btn btn--primary"}
+                  onClick={() => setOpenEditor(openEditor === "money" ? null : "money")}
+                >
+                  {openEditor === "money" ? "Close" : "Adjust balance"}
+                </button>
               </div>
+              {openEditor === "money" && (
               <div className="setting-stack">
                 <div className="segmented">
-                  {(["spend", "advance", "adjust"] as const).map((action) => (
-                    <button key={action} type="button" className={moneyAction === action ? "is-active" : ""} onClick={() => setMoneyAction(action)}>
-                      {action}
+                  {MONEY_ACTIONS.map((action) => (
+                    <button key={action.id} type="button" className={moneyAction === action.id ? "is-active" : ""} onClick={() => setMoneyAction(action.id)}>
+                      {action.label}
                     </button>
                   ))}
                 </div>
+                <p className="field-hint">{MONEY_ACTIONS.find((action) => action.id === moneyAction)?.hint}</p>
                 <div className="field-grid">
                   <label className="field">
                     <span>Amount</span>
                     <input value={moneyAmount} onChange={(event) => setMoneyAmount(event.target.value)} inputMode="numeric" />
                   </label>
                   <label className="field">
-                    <span>Note</span>
-                    <input value={moneyNote} onChange={(event) => setMoneyNote(event.target.value)} placeholder="Optional" />
+                    <span>Reason</span>
+                    <input value={moneyNote} onChange={(event) => setMoneyNote(event.target.value)} placeholder="e.g. Helped wash the car" />
                   </label>
                 </div>
                 <div className="btn-row">
-                  <button className="btn btn--primary" onClick={() => void saveMoney()}>Apply</button>
+                  <button className="btn btn--primary" onClick={() => void saveMoney()}>
+                    Apply {MONEY_ACTIONS.find((action) => action.id === moneyAction)?.label.toLowerCase()}
+                  </button>
                 </div>
+              </div>
+              )}
+
+              <div className="setting-row">
+                <div>
+                  <strong>Recent activity</strong>
+                  <p>{selectedChild ? `Last money movements for ${selectedChild.name}` : "Choose a child first"}</p>
+                </div>
+              </div>
+              <div className="ledger-list">
+                {selectedChild &&
+                  state.ledger
+                    .filter((entry) => entry.childId === selectedChild.id)
+                    .slice(0, 6)
+                    .map((entry) => (
+                      <article key={entry.id} className="ledger-row">
+                        <div>
+                          <strong>{entry.type}</strong>
+                          <p>{entry.note || formatClock(entry.ts)}</p>
+                        </div>
+                        <span className={entry.amount < 0 ? "is-negative" : "is-positive"}>{entry.amount < 0 ? `-R${Math.abs(entry.amount)}` : `+R${entry.amount}`}</span>
+                      </article>
+                    ))}
+                {selectedChild && !state.ledger.some((entry) => entry.childId === selectedChild.id) && (
+                  <p className="empty-state">No money movements yet.</p>
+                )}
               </div>
 
               <div className="setting-row">
@@ -842,6 +1344,7 @@ export default function HomeBoard({ tenantId, familyName, email }: Props) {
               </div>
             </div>
           </section>
+          )}
         </aside>
       </section>
 

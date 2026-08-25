@@ -29,6 +29,7 @@ import type {
   LedgerEntry,
   NextAlarm,
   Result,
+  ScreenDay,
   State,
   Task,
   TaskState,
@@ -57,6 +58,7 @@ export class Core {
 
   constructor(state: State, supabase: SupabaseClient, onChange: () => void, notify: Notify) {
     this.state = state;
+    this.state.screenTime ??= {}; // older cached states predate the screen timer
     this.supabase = supabase;
     this.onChange = onChange;
     this.notify = notify;
@@ -98,6 +100,7 @@ export class Core {
       .on("postgres_changes", { event: "*", schema: "public", table: "completions",  filter: `tenant_id=eq.${t}` }, () => this.refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "ledger",       filter: `tenant_id=eq.${t}` }, () => this.refresh())
       .on("postgres_changes", { event: "*", schema: "public", table: "applied",      filter: `tenant_id=eq.${t}` }, () => this.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "screen_time",  filter: `tenant_id=eq.${t}` }, () => this.refresh())
       .subscribe();
   }
 
@@ -400,7 +403,7 @@ export class Core {
     const row: Row = {
       tenant_id: this.state.tenantId,
       name: input.name || "Child",
-      av: input.av || "🙂",
+      av: input.av || "\u{1F642}",
       color: input.color || palette[0],
       color_lite: input.colorLite || palette[1],
     };
@@ -417,6 +420,9 @@ export class Core {
       color: d.color,
       colorLite: d.color_lite,
       balance: d.balance,
+      screenStart: d.screen_start ?? null,
+      screenEnd: d.screen_end ?? null,
+      screenDailyMin: d.screen_daily_min ?? 60,
     });
     saveCached(this.state);
     this.onChange();
@@ -435,6 +441,9 @@ export class Core {
     if (patch.color !== undefined) row.color = patch.color;
     if (patch.colorLite !== undefined) row.color_lite = patch.colorLite;
     if (patch.balance !== undefined) row.balance = patch.balance;
+    if (patch.screenStart !== undefined) row.screen_start = patch.screenStart;
+    if (patch.screenEnd !== undefined) row.screen_end = patch.screenEnd;
+    if (patch.screenDailyMin !== undefined) row.screen_daily_min = patch.screenDailyMin;
     const { error } = await this.supabase.from("children").update(row).eq("id", id);
     if (error) {
       this.notify("error", error.message);
@@ -716,6 +725,70 @@ export class Core {
   }
   adjust(childId: string, amount: number, note?: string): Promise<void> {
     return this.ledgerAdjust(childId, amount, "adjust", note || "Adjustment");
+  }
+
+  // ---- screen-time countdown -------------------------------------------------
+
+  screenStatus(childId: string, at: number): { totalSec: number; usedSec: number; remainSec: number; running: boolean } {
+    const child = this.child(childId);
+    const today = dateKey(at);
+    const entry = this.state.screenTime[childId];
+    const day: ScreenDay = entry && entry.date === today ? entry : { date: today, usedSec: 0, bonusMin: 0, runningSince: null };
+    const runningElapsed = day.runningSince ? Math.max(0, Math.floor((at - day.runningSince) / 1000)) : 0;
+    const usedSec = day.usedSec + runningElapsed;
+    const totalSec = Math.max(0, ((child?.screenDailyMin ?? 60) + day.bonusMin) * 60);
+    return { totalSec, usedSec, remainSec: totalSec - usedSec, running: !!day.runningSince };
+  }
+
+  async startScreen(childId: string, at: number): Promise<void> {
+    const day = this.screenEntry(childId, at);
+    if (day.runningSince) return;
+    day.runningSince = at;
+    saveCached(this.state);
+    this.onChange();
+    await this.upsertScreen(childId, day);
+  }
+
+  async pauseScreen(childId: string, at: number): Promise<void> {
+    const day = this.screenEntry(childId, at);
+    if (!day.runningSince) return;
+    day.usedSec += Math.max(0, Math.floor((at - day.runningSince) / 1000));
+    day.runningSince = null;
+    saveCached(this.state);
+    this.onChange();
+    await this.upsertScreen(childId, day);
+  }
+
+  async adjustScreen(childId: string, minutes: number, at: number): Promise<void> {
+    const day = this.screenEntry(childId, at);
+    day.bonusMin += minutes;
+    saveCached(this.state);
+    this.onChange();
+    await this.upsertScreen(childId, day);
+  }
+
+  private screenEntry(childId: string, at: number): ScreenDay {
+    const today = dateKey(at);
+    const current = this.state.screenTime[childId];
+    if (!current || current.date !== today) {
+      this.state.screenTime[childId] = { date: today, usedSec: 0, bonusMin: 0, runningSince: null };
+    }
+    return this.state.screenTime[childId];
+  }
+
+  private async upsertScreen(childId: string, day: ScreenDay): Promise<void> {
+    const { error } = await this.supabase.from("screen_time").upsert(
+      {
+        tenant_id: this.state.tenantId,
+        child_id: childId,
+        date: day.date,
+        used_sec: day.usedSec,
+        bonus_min: day.bonusMin,
+        running_since: day.runningSince ? new Date(day.runningSince).toISOString() : null,
+      },
+      { onConflict: "child_id,date" },
+    );
+    if (error) this.notify("error", error.message);
   }
 
   async setPin(pin: string): Promise<Result> {

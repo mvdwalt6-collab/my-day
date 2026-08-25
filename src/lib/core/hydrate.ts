@@ -2,12 +2,14 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { dateKey } from "./rules";
 import type {
   Child,
   Completion,
   Goal,
   LedgerEntry,
   MemberRole,
+  ScreenDay,
   State,
   Task,
   TenantStatus,
@@ -21,6 +23,9 @@ type ChildRow = {
   color: string;
   color_lite: string;
   balance: number;
+  screen_start?: string | null;
+  screen_end?: string | null;
+  screen_daily_min?: number;
 };
 type TaskRow = {
   id: string;
@@ -87,9 +92,17 @@ type TenantMemberRow = {
 };
 
 export async function hydrate(supabase: SupabaseClient): Promise<State> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("not-signed-in");
+
+  // Filter by user_id explicitly: sysadmins can see every membership via RLS,
+  // so relying on RLS alone makes maybeSingle() fail with multiple rows.
   const { data: member, error: memberError } = await supabase
     .from("tenant_members")
     .select("role, tenants!inner(id, name, status)")
+    .eq("user_id", user.id)
     .maybeSingle<TenantMemberRow>();
 
   if (memberError) throw memberError;
@@ -119,6 +132,23 @@ export async function hydrate(supabase: SupabaseClient): Promise<State> {
 
   const err = sErr ?? cErr ?? tErr ?? gErr ?? coErr ?? lErr ?? aErr ?? snErr;
   if (err) throw err;
+
+  // Tolerate a missing screen_time table (migration 0008 not applied yet).
+  const screenTime: Record<string, ScreenDay> = {};
+  const todayKey = dateKey(Date.now());
+  const { data: screenRows } = await supabase
+    .from("screen_time")
+    .select("child_id, date, used_sec, bonus_min, running_since")
+    .eq("tenant_id", tenantId)
+    .eq("date", todayKey);
+  (screenRows ?? []).forEach((row: { child_id: string; date: string; used_sec: number; bonus_min: number; running_since: string | null }) => {
+    screenTime[row.child_id] = {
+      date: row.date,
+      usedSec: row.used_sec,
+      bonusMin: row.bonus_min,
+      runningSince: row.running_since ? new Date(row.running_since).getTime() : null,
+    };
+  });
 
   const appliedMap: Record<string, boolean> = {};
   (applied ?? []).forEach((r) => (appliedMap[r.key] = true));
@@ -152,6 +182,9 @@ export async function hydrate(supabase: SupabaseClient): Promise<State> {
       color: r.color,
       colorLite: r.color_lite,
       balance: r.balance,
+      screenStart: r.screen_start ?? null,
+      screenEnd: r.screen_end ?? null,
+      screenDailyMin: r.screen_daily_min ?? 60,
     })),
     tasks: (tasks ?? []).map<Task>((r) => ({
       id: r.id,
@@ -198,5 +231,6 @@ export async function hydrate(supabase: SupabaseClient): Promise<State> {
     })),
     applied: appliedMap,
     snoozes: snoozeMap,
+    screenTime,
   };
 }

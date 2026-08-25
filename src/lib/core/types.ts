@@ -32,6 +32,9 @@ export interface Child {
   color: string;
   colorLite: string;
   balance: number;
+  screenStart: string | null;
+  screenEnd: string | null;
+  screenDailyMin: number;
 }
 
 export interface Task {
@@ -81,6 +84,14 @@ export interface LedgerEntry {
   note: string;
 }
 
+// Per-child screen-time countdown for one logical day.
+export interface ScreenDay {
+  date: string;
+  usedSec: number;
+  bonusMin: number;
+  runningSince: number | null;
+}
+
 export interface State {
   tenantId: string;
   familyName: string;
@@ -96,6 +107,7 @@ export interface State {
   ledger: LedgerEntry[];
   applied: Record<string, boolean>;
   snoozes: Record<string, number>;
+  screenTime: Record<string, ScreenDay>;
 }
 
 export interface NextAlarm {

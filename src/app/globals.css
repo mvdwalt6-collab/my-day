@@ -649,3 +649,499 @@ hr.sep {
   border-top: 1px solid var(--line);
   margin: 6px 0;
 }
+
+/* Parent tab bar */
+
+.tab-bar {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+}
+
+.tab-bar button {
+  flex: 1;
+  border: 0;
+  border-radius: 18px;
+  padding: 12px 16px;
+  font: inherit;
+  font-weight: 800;
+  color: var(--ink-soft);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tab-bar button.is-active {
+  background: linear-gradient(180deg, var(--gold-2), var(--gold));
+  color: #4d3405;
+  box-shadow: var(--shadow-lo);
+}
+
+/* Single-column layout for Manage/Settings tabs */
+
+.board-solo {
+  display: grid;
+  gap: 16px;
+}
+
+.board-solo .side-column {
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Kid-mode wallet strip */
+
+.stats-grid--kid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Compact child selector */
+
+.panel--hero-slim {
+  padding: 18px 24px;
+}
+
+.panel--hero-slim h1 {
+  font-size: clamp(20px, 3vw, 30px);
+  margin: 2px 0 0;
+}
+
+.chip-panel--compact {
+  padding: 12px 16px;
+  display: grid;
+  gap: 8px;
+}
+
+.chip-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.chip-row--compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.child-chip--mini {
+  padding: 6px 10px;
+  border-radius: 16px;
+  gap: 8px;
+}
+
+.child-chip--mini .child-chip__avatar {
+  width: 30px;
+  height: 30px;
+  font-size: 16px;
+}
+
+.child-chip__stack {
+  display: grid;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.child-chip--mini .child-chip__name {
+  font-size: 14px;
+}
+
+.child-chip__balance {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.child-chip--mini.is-active .child-chip__balance {
+  color: color-mix(in srgb, var(--chip) 70%, var(--ink));
+}
+
+/* Grouped per-child board (kid mode) */
+
+.kid-board {
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+  border-top: 6px solid var(--chip);
+}
+
+.kid-board__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.kid-board__head h2 {
+  margin: 0;
+}
+
+.kid-board__head p {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+}
+
+.kid-board__avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--chip-soft);
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  box-shadow: var(--shadow-lo);
+}
+
+.kid-board__section {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.section-head--tight h2,
+.section-head--tight h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.section-head--tight span {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.window-block--slim .window-block__head h3 {
+  font-size: 14px;
+}
+
+.task-card--slim {
+  padding: 10px 12px;
+}
+
+.task-card--slim .task-card__icon {
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+}
+
+.task-card--slim h4 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.task-card--slim p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* Goal progress bars */
+
+.goal-card--progress .goal-card__body {
+  display: grid;
+  gap: 6px;
+}
+
+.goal-progress {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.goal-progress__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--chip, var(--gold-2)), var(--gold));
+  transition: width 0.4s ease;
+}
+
+.goal-card--ready .goal-progress__fill {
+  background: linear-gradient(90deg, #7ddfae, var(--ok));
+}
+
+.field-hint {
+  margin: -4px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* Kid vitals: piggy bank + screen time clocks */
+
+.kid-vitals {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.kid-vital {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.kid-vital__body h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.kid-vital__body p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.kid-vital__big {
+  font-size: 18px !important;
+  font-weight: 800;
+  color: var(--ink) !important;
+}
+
+.kid-vital--screen.is-on {
+  border-color: var(--ok);
+  background: #e9f9f1;
+}
+
+.kid-vital--timer.is-on {
+  border-color: var(--ok);
+  background: #e9f9f1;
+}
+
+.kid-vital--timer.is-out {
+  border-color: var(--bad);
+  background: #fdeceb;
+}
+
+.kid-timer__digits {
+  font-size: 34px !important;
+  font-weight: 800;
+  color: var(--ink) !important;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.kid-vital--timer.is-out .kid-timer__digits {
+  color: var(--bad) !important;
+}
+
+.kid-timer__bar {
+  margin: 4px 0;
+  width: 100%;
+  min-width: 140px;
+}
+
+.kid-vital--timer .kid-vital__body {
+  flex: 1;
+}
+
+.kid-timer__btn {
+  font-size: 18px;
+  padding: 14px 20px;
+  flex-shrink: 0;
+}
+
+.piggy {
+  position: relative;
+  width: 64px;
+  height: 84px;
+  border-radius: 18px;
+  border: 2px solid #f3b6c8;
+  background: #fff0f5;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.piggy__fill {
+  position: absolute;
+  inset: auto 0 0 0;
+  background: linear-gradient(180deg, #ffb1c9, #ff7fb0);
+  transition: height 0.6s ease;
+}
+
+.piggy__emoji {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+}
+
+.clock-row {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.clock-row figure {
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.clock-row figcaption {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.clock {
+  width: 56px;
+  height: 56px;
+}
+
+.clock__face {
+  fill: #fff;
+  stroke: var(--line);
+  stroke-width: 3;
+}
+
+.clock__tick {
+  stroke: #c9c5d8;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.clock__hour,
+.clock__minute {
+  stroke: var(--ink);
+  stroke-linecap: round;
+}
+
+.clock__hour { stroke-width: 7; }
+.clock__minute { stroke-width: 4.5; }
+
+.clock__pin { fill: var(--ink); }
+
+.clock--ok .clock__face { stroke: var(--ok); }
+.clock--ok .clock__hour,
+.clock--ok .clock__minute,
+.clock--ok .clock__pin { stroke: #14724a; fill: #14724a; }
+
+.clock--bad .clock__face { stroke: var(--bad); }
+.clock--bad .clock__hour,
+.clock--bad .clock__minute,
+.clock--bad .clock__pin { stroke: #9c3129; fill: #9c3129; }
+
+/* Per-child screen time rows (settings) */
+
+.screen-alarm-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) 1fr 1fr;
+  gap: 10px;
+  align-items: end;
+}
+
+.screen-alarm-row__name {
+  font-weight: 800;
+  padding-bottom: 12px;
+}
+
+/* Parent PIN modal */
+
+.pin-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(43, 39, 64, 0.45);
+  backdrop-filter: blur(4px);
+  padding: 20px;
+}
+
+.pin-modal__card {
+  padding: 28px;
+  width: min(360px, 100%);
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+
+.pin-modal__card input {
+  font-size: 28px;
+  letter-spacing: 12px;
+  text-align: center;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+}
+
+.pin-modal__error {
+  color: var(--bad);
+  font-weight: 700;
+}
+
+/* Onboarding wizard */
+
+.wizard-card {
+  gap: 14px;
+}
+
+.wizard-steps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wizard-step {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-soft);
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+
+.wizard-step.is-active {
+  background: linear-gradient(180deg, var(--gold-2), var(--gold));
+  color: #4d3405;
+}
+
+.wizard-step.is-done {
+  background: #cdeede;
+  color: #14563a;
+}
+
+.wizard-child {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.wizard-picker {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.wizard-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  background: var(--bg);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.wizard-chip.is-active {
+  border-color: var(--gold);
+  box-shadow: var(--shadow-lo);
+}
+
+.wizard-chip--color.is-active {
+  outline: 2px solid var(--ink);
+}
