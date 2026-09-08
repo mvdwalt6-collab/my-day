@@ -17,6 +17,11 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
+      - name: Auto-approve required install scripts
+        run: |
+          npm ci --ignore-scripts
+          npm approve-scripts unrs-resolver
+
       - name: Link Vercel project
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
