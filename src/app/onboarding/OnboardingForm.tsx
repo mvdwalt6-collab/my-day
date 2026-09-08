@@ -82,21 +82,28 @@ export default function OnboardingPage() {
       }
     }
 
-    const response = await fetch("/api/onboarding/create-family", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        familyName,
-        importSnapshot: snapshot,
-        children: namedChildren.map((child) => ({
-          name: child.name.trim(),
-          av: child.av,
-          color: child.color,
-          colorLite: child.colorLite,
-        })),
-        pin: pin || undefined,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch("/api/onboarding/create-family", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          familyName,
+          importSnapshot: snapshot,
+          children: namedChildren.map((child) => ({
+            name: child.name.trim(),
+            av: child.av,
+            color: child.color,
+            colorLite: child.colorLite,
+          })),
+          pin: pin || undefined,
+        }),
+      });
+    } catch {
+      setBusy(false);
+      setMsg("We could not reach the server. Check your connection and try again.");
+      return;
+    }
 
     const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; message?: string; warning?: string };
 
