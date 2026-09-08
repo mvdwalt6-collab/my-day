@@ -20,7 +20,11 @@ jobs:
       - name: Auto-approve required install scripts
         run: |
           npm ci --ignore-scripts
-          npm approve-scripts unrs-resolver
+          if npm help approve-scripts >/dev/null 2>&1; then
+            npm approve-scripts unrs-resolver
+          else
+            echo "npm approve-scripts not available on this runner; continuing."
+          fi
 
       - name: Link Vercel project
         env:
