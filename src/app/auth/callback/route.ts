@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next") ?? "/";
+  const family = url.searchParams.get("family");
 
   if (code) {
     const supabase = await createClient();
@@ -15,5 +16,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(new URL(next, url.origin));
+  const destination = new URL(next, url.origin);
+  if (family && destination.pathname === "/onboarding") destination.searchParams.set("family", family);
+  return NextResponse.redirect(destination);
 }
