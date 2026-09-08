@@ -49,6 +49,22 @@ const PALETTE: Array<[string, string]> = [
 
 type Row = Record<string, any>;
 
+const HYDRATE_TIMEOUT_MS = 15000;
+
+async function hydrateWithTimeout(supabase: SupabaseClient): Promise<State> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      hydrate(supabase),
+      new Promise<State>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Family data took too long to load. Check the Supabase connection and try again.")), HYDRATE_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 export class Core {
   private state: State;
   private supabase: SupabaseClient;
@@ -75,13 +91,13 @@ export class Core {
     if (cached) {
       state = cached;
       // Kick off a background refresh but return the cached state immediately.
-      void hydrate(supabase).then((fresh) => {
+      void hydrateWithTimeout(supabase).then((fresh) => {
         Object.assign(state, fresh);
         saveCached(state);
         onChange();
       });
     } else {
-      state = await hydrate(supabase);
+      state = await hydrateWithTimeout(supabase);
       saveCached(state);
     }
     const core = new Core(state, supabase, onChange, notify);
