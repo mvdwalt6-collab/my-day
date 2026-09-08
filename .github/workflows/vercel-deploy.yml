@@ -14,11 +14,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Auto-approve required install scripts
+        run: |
+          npm ci --ignore-scripts
+          npm approve-scripts unrs-resolver || echo "npm approve-scripts unavailable on this runner; continuing."
+
+      - name: Link Vercel project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          rm -rf .vercel
+          vercel link --yes --project my-day --scope mvdwalt6-collabs-projects --token "$VERCEL_TOKEN"
+
       - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: prj_JSNMZCrQlGwApeaZJi6zCWUzGkK0
-          vercel-args: '--prod'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --scope mvdwalt6-collabs-projects --token "$VERCEL_TOKEN"
