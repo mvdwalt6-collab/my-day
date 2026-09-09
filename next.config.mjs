@@ -17,7 +17,8 @@ const csp = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  output: "standalone",
+  // "standalone" is for the self-hosted Docker build; Vercel's builder handles output itself.
+  ...(process.env.VERCEL ? {} : { output: "standalone" }),
   turbopack: {
     root: import.meta.dirname,
   },
