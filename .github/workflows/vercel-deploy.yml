@@ -10,6 +10,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      VERCEL_SCOPE: ${{ secrets.VERCEL_SCOPE }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,7 +23,17 @@ jobs:
         run: rm -rf .vercel
 
       - name: Link project
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} --project=my-day
+        run: |
+          SCOPE_ARGS=""
+          if [ -n "${VERCEL_SCOPE}" ]; then
+            SCOPE_ARGS="--scope=${VERCEL_SCOPE}"
+          fi
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} --project=my-day ${SCOPE_ARGS}
 
       - name: Deploy to Vercel
-        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+        run: |
+          SCOPE_ARGS=""
+          if [ -n "${VERCEL_SCOPE}" ]; then
+            SCOPE_ARGS="--scope=${VERCEL_SCOPE}"
+          fi
+          vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} ${SCOPE_ARGS}
