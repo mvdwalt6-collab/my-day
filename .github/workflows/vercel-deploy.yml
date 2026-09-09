@@ -21,7 +21,7 @@ jobs:
         run: rm -rf .vercel
 
       - name: Link project
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} --scope=mvdwalt6-collab --project=my-day
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} --project=my-day
 
       - name: Deploy to Vercel
-        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} --scope=mvdwalt6-collab
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
